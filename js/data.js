@@ -10,10 +10,24 @@ import {
   updateDoc
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-lite.js";
 import { db } from "./firebase.js";
+import { DEFAULT_PLAYERS } from "./clubData.js";
+
+function defaultPlayers() {
+  return DEFAULT_PLAYERS.map((player, index) => ({
+    id: `default-${index + 1}`,
+    status: "active",
+    ...player
+  }));
+}
 
 export async function listPlayers() {
-  const snapshot = await getDocs(query(collection(db, "players"), orderBy("name", "asc")));
-  return snapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
+  try {
+    const snapshot = await getDocs(query(collection(db, "players"), orderBy("name", "asc")));
+    return snapshot.empty ? defaultPlayers() : snapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
+  } catch (error) {
+    console.warn("Using the built-in club roster until Firestore is available", error);
+    return defaultPlayers();
+  }
 }
 
 export async function addPlayer(player) {

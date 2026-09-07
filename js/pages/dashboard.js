@@ -1,4 +1,5 @@
 import { listPlayers, listTransactions, summarizeTransactions } from "../data.js";
+import { TOURNAMENT_DATE, TOURNAMENT_TEAMS } from "../clubData.js";
 import { escapeHtml, formatCurrency } from "../utils.js";
 
 export async function renderDashboardPage(container, { profile, email, role }) {
@@ -13,6 +14,14 @@ export async function renderDashboardPage(container, { profile, email, role }) {
       <div class="stat-card"><span class="stat-label">Total Collections</span><strong class="stat-value" id="dash-collections">—</strong></div>
       <div class="stat-card"><span class="stat-label">Total Expenses</span><strong class="stat-value" id="dash-expenses">—</strong></div>
     </div>
+    <a class="dashboard-event" href="#/tournament-2026">
+      <div>
+        <span class="eyebrow">Next event</span>
+        <h2>Tournament 2026</h2>
+        <p>${TOURNAMENT_DATE} · ${TOURNAMENT_TEAMS.length} teams · ${TOURNAMENT_TEAMS.length * 6} players</p>
+      </div>
+      <span class="dashboard-event-arrow" aria-hidden="true">→</span>
+    </a>
     <p class="empty-state">Role: ${role === "admin" ? "Admin" : "Member"}${role === "admin" ? " — you can manage Players and Finance." : ""}</p>
   `;
 

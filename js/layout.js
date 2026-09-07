@@ -4,6 +4,7 @@ const NAV_ITEMS = [
   { path: "/dashboard", label: "Dashboard", icon: "▦" },
   { path: "/rules", label: "Rule", icon: "▤" },
   { path: "/players", label: "Player", icon: "◍" },
+  { path: "/tournament-2026", label: "Tournament 2026", icon: "★" },
   { path: "/finance", label: "Finance", icon: "৳" }
 ];
 

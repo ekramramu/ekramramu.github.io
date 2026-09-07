@@ -5,6 +5,8 @@ function playerRow(player, isAdmin) {
   return `
     <tr data-id="${escapeHtml(player.id)}">
       <td>${escapeHtml(player.name)}</td>
+      <td><strong class="rating-value">${player.rating == null ? "—" : Number(player.rating).toFixed(2)}</strong></td>
+      <td>${escapeHtml(player.team || "—")}</td>
       <td>${escapeHtml(player.position || "—")}</td>
       <td>${escapeHtml(player.jerseyNumber ?? "—")}</td>
       <td>${escapeHtml(player.phone || "—")}</td>
@@ -69,7 +71,7 @@ export async function renderPlayersPage(container, { role }) {
       <table class="data-table">
         <thead>
           <tr>
-            <th>Name</th><th>Position</th><th>Jersey #</th><th>Phone</th><th>Status</th>
+            <th>Name</th><th>Rating</th><th>Tournament team</th><th>Position</th><th>Jersey #</th><th>Phone</th><th>Status</th>
             ${isAdmin ? "<th>Actions</th>" : ""}
           </tr>
         </thead>
@@ -82,7 +84,7 @@ export async function renderPlayersPage(container, { role }) {
 
   const tbody = document.getElementById("players-tbody");
   const formSlot = document.getElementById("player-form-slot");
-  const colSpan = isAdmin ? 6 : 5;
+  const colSpan = isAdmin ? 8 : 7;
 
   async function refresh() {
     try {
