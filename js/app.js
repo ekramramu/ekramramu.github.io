@@ -1,4 +1,4 @@
-import { watchAuthState, getUserProfile, logoutAccount } from "./auth.js";
+import { watchAuthState, getUserProfile, ensureUserProfile, logoutAccount } from "./auth.js";
 import { renderShell } from "./layout.js";
 import { renderLogin, renderRegister, renderVerifyNotice } from "./pages/authPages.js";
 import { renderDashboardPage } from "./pages/dashboard.js";
@@ -82,6 +82,9 @@ watchAuthState(async (user) => {
   authState = { status: "signed-in", user };
   try {
     currentProfile = await getUserProfile(user.uid);
+    if (!currentProfile) {
+      currentProfile = await ensureUserProfile(user);
+    }
   } catch (error) {
     console.error("Unable to load user profile", error);
     currentProfile = null;
