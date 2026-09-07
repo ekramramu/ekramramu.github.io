@@ -56,11 +56,11 @@ function matchFormHtml(match = {}, venues = []) {
         </label>
         <label class="form-field">
           <span>Start time</span>
-          <input type="time" name="startTime" value="${escapeHtml(match.startTime || "")}" required />
+          <input type="time" name="startTime" value="${escapeHtml(match.startTime || "18:00")}" required />
         </label>
         <label class="form-field">
           <span>End time</span>
-          <input type="time" name="endTime" value="${escapeHtml(match.endTime || "")}" />
+          <input type="time" name="endTime" value="${escapeHtml(match.endTime || "19:30")}" />
         </label>
         <label class="form-field form-field-wide">
           <span>Venue</span>
@@ -200,6 +200,17 @@ export async function renderMatchDaysPage(container, { role, uid }) {
     const errorEl = overlay.querySelector("#match-form-error");
     overlay.querySelector("#match-modal-close").addEventListener("click", closeForm);
     overlay.querySelector("#match-form-cancel").addEventListener("click", closeForm);
+    overlay.querySelectorAll('input[type="date"], input[type="time"]').forEach((input) => {
+      input.addEventListener("click", () => {
+        if (typeof input.showPicker === "function") {
+          try {
+            input.showPicker();
+          } catch {
+            // Picker can't be shown programmatically in this browser; ignore.
+          }
+        }
+      });
+    });
     form.addEventListener("submit", async (event) => {
       event.preventDefault();
       errorEl.hidden = true;
