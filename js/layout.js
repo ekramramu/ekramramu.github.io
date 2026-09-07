@@ -49,7 +49,7 @@ export function renderShell(appRoot, { activePath, profile, email }) {
 
   appRoot.innerHTML = `
     <div class="app-shell">
-      <aside class="app-sidebar">
+      <aside class="app-sidebar" id="app-sidebar">
         <div class="app-brand">
           <img class="app-brand-mark" src="assets/logo-mark.svg" alt="" aria-hidden="true" />
           <span class="app-brand-title">SDFC</span>
@@ -65,7 +65,7 @@ export function renderShell(appRoot, { activePath, profile, email }) {
       </aside>
       <main class="app-main">
         <header class="app-topbar">
-          <button class="icon-button menu-button" type="button" aria-label="Toggle menu" title="Toggle menu">☰</button>
+          <button class="icon-button menu-button" type="button" aria-label="Toggle menu" title="Toggle menu" aria-expanded="true" aria-controls="app-sidebar">☰</button>
           <span class="topbar-mark" aria-hidden="true">◷</span>
           <label class="search-box">
             <span aria-hidden="true">⌕</span>
@@ -86,6 +86,13 @@ export function renderShell(appRoot, { activePath, profile, email }) {
     button.addEventListener("click", () => {
       button.closest(".app-nav-group").classList.toggle("open");
     });
+  });
+
+  const shell = appRoot.querySelector(".app-shell");
+  const menuButton = appRoot.querySelector(".menu-button");
+  menuButton.addEventListener("click", () => {
+    const collapsed = shell.classList.toggle("sidebar-collapsed");
+    menuButton.setAttribute("aria-expanded", String(!collapsed));
   });
 
   return document.getElementById("page-content");
