@@ -2,14 +2,43 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /site/{document} {
-      allow read: if true;
-      allow write: if false;
+    function isSignedIn() {
+      return request.auth != null;
     }
 
-    match /items/{document} {
-      allow read: if true;
-      allow write: if false;
+    function isVerified() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isAdmin() {
+      return isVerified()
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    // One profile document per authenticated user; role can only be
+    // escalated by an existing admin, never by the user themselves.
+    match /users/{userId} {
+      allow get: if isAdmin() || (isVerified() && request.auth.uid == userId);
+      allow create: if isSignedIn()
+        && request.auth.uid == userId
+        && request.resource.data.role == 'member';
+      allow update: if isAdmin()
+        || (isVerified() && request.auth.uid == userId
+            && request.resource.data.role == resource.data.role);
+      allow delete: if false;
+    }
+
+    // Any verified member can view the roster; only admins can edit it.
+    match /players/{playerId} {
+      allow read: if isVerified();
+      allow write: if isAdmin();
+    }
+
+    // Any verified member can view finance records; only admins can edit them.
+    match /financeTransactions/{transactionId} {
+      allow read: if isVerified();
+      allow write: if isAdmin();
     }
 
     match /{document=**} {

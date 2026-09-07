@@ -1,10 +1,7 @@
 {
-  "name": "firebase-portfolio-site",
+  "name": "sdfc-club-portal",
   "private": true,
   "type": "module",
-  "scripts": {
-    "seed": "node seed.js"
-  },
   "dependencies": {
     "firebase": "^10.12.2"
   }
