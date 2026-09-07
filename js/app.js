@@ -7,10 +7,11 @@ import { renderPlayersPage } from "./pages/players.js";
 import { renderFinancePage } from "./pages/finance.js";
 import { renderTournamentPage } from "./pages/tournament.js";
 import { renderMatchDaysPage } from "./pages/matchDays.js";
+import { renderVenuesPage } from "./pages/venues.js";
 import { registerRoute, setNotFoundHandler, startRouter, navigate, getCurrentPath } from "./router.js";
 
 const appRoot = document.querySelector("#app");
-const PROTECTED_PATHS = ["/dashboard", "/rules", "/players", "/match-days", "/tournament-2026", "/finance"];
+const PROTECTED_PATHS = ["/dashboard", "/rules", "/players", "/match-days", "/venues", "/tournament-2026", "/finance"];
 
 let authState = { status: "loading" };
 let currentProfile = null;
@@ -63,6 +64,8 @@ function renderCurrentView() {
     renderPlayersPage(content, pageContext);
   } else if (path === "/match-days") {
     renderMatchDaysPage(content, pageContext);
+  } else if (path === "/venues") {
+    renderVenuesPage(content, pageContext);
   } else if (path === "/tournament-2026") {
     renderTournamentPage(content);
   } else if (path === "/finance") {

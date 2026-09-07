@@ -28,7 +28,7 @@ function matchCardHtml(match, { totalPlayers, inCount, outCount, mine }) {
       <div class="match-card-main">
         <span class="eyebrow">Next match day</span>
         <h2>${escapeHtml(match.title || "Match day")} <span class="badge badge-active">Upcoming</span></h2>
-        <p class="match-meta">◷ ${formatDate(match.date)}, ${escapeHtml(match.startTime || "—")}${match.endTime ? ` – ${escapeHtml(match.endTime)}` : ""} &nbsp; · &nbsp; ◉ ${escapeHtml(match.venue || "Venue TBC")}</p>
+        <p class="match-meta">◷ ${formatDate(match.date)}, ${escapeHtml(match.startTime || "—")}${match.endTime ? ` – ${escapeHtml(match.endTime)}` : ""} &nbsp; · &nbsp; ◉ ${escapeHtml(match.venueName || "Venue TBC")}</p>
         <div class="match-counts">
           <div><strong>${totalPlayers}</strong><span>Total</span></div>
           <div><strong>${inCount}</strong><span>Confirmed</span></div>

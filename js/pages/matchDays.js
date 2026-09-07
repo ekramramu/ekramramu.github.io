@@ -4,10 +4,12 @@ import {
   listMatchDays,
   listMatchResponses,
   listPlayers,
+  listVenues,
   setMatchResponse,
   updateMatchDay
 } from "../data.js";
 import { escapeHtml, formatDate } from "../utils.js";
+import { closeModal, openModal } from "../modal.js";
 
 function toStamp(date, time) {
   const [year, month, day] = String(date || "").split("-").map(Number);
@@ -30,22 +32,26 @@ function calendarLink(match) {
     action: "TEMPLATE",
     text: match.title || "Match day",
     dates: `${calendarStamp(start)}/${calendarStamp(end)}`,
-    location: match.venue || ""
+    location: match.venueAddress || match.venueName || ""
   });
   return `https://calendar.google.com/calendar/render?${params.toString()}`;
 }
 
-function matchFormHtml(match = {}) {
+function matchFormHtml(match = {}, venues = []) {
   return `
-    <form class="inline-form" id="match-form">
+    <div class="modal-header">
+      <h2>${match.id ? "Edit Match Day" : "Create Match Day"}</h2>
+      <button class="icon-button" id="match-modal-close" type="button" aria-label="Close">✕</button>
+    </div>
+    <form id="match-form">
       <input type="hidden" name="id" value="${escapeHtml(match.id || "")}" />
       <div class="form-grid">
         <label class="form-field form-field-wide">
-          <span>Title</span>
+          <span>Match Day Name</span>
           <input type="text" name="title" value="${escapeHtml(match.title || "")}" placeholder="Weekly Match" required />
         </label>
         <label class="form-field">
-          <span>Date</span>
+          <span>Match Day Date</span>
           <input type="date" name="date" value="${escapeHtml(match.date || "")}" required />
         </label>
         <label class="form-field">
@@ -58,13 +64,16 @@ function matchFormHtml(match = {}) {
         </label>
         <label class="form-field form-field-wide">
           <span>Venue</span>
-          <input type="text" name="venue" value="${escapeHtml(match.venue || "")}" />
+          <select name="venueId">
+            <option value="">Please select a venue</option>
+            ${venues.map((venue) => `<option value="${escapeHtml(venue.id)}" ${match.venueId === venue.id ? "selected" : ""}>${escapeHtml(venue.name)}</option>`).join("")}
+          </select>
         </label>
       </div>
       <p class="auth-error" id="match-form-error" role="alert" hidden></p>
-      <div class="auth-actions">
-        <button class="btn btn-primary" type="submit">${match.id ? "Save changes" : "Add match day"}</button>
+      <div class="auth-actions modal-actions">
         <button class="btn btn-secondary" id="match-form-cancel" type="button">Cancel</button>
+        <button class="btn btn-primary" type="submit">${match.id ? "Save changes" : "Create"}</button>
       </div>
     </form>
   `;
@@ -82,7 +91,7 @@ function matchCard(match, { totalPlayers, responses, uid, isAdmin }) {
     <article class="matchday-card" data-id="${escapeHtml(match.id)}">
       <div class="match-card-main">
         <h2>${escapeHtml(match.title || "Match day")} <span class="badge badge-${isPast ? "inactive" : "active"}">${statusLabel}</span></h2>
-        <p class="match-meta">◷ ${formatDate(match.date)}, ${escapeHtml(match.startTime || "—")}${match.endTime ? ` – ${escapeHtml(match.endTime)}` : ""} &nbsp; · &nbsp; ◉ ${escapeHtml(match.venue || "Venue TBC")}</p>
+        <p class="match-meta">◷ ${formatDate(match.date)}, ${escapeHtml(match.startTime || "—")}${match.endTime ? ` – ${escapeHtml(match.endTime)}` : ""} &nbsp; · &nbsp; ◉ ${escapeHtml(match.venueName || "Venue TBC")}</p>
         <div class="match-counts">
           <div><strong>${totalPlayers}</strong><span>Total</span></div>
           <div><strong>${inCount}</strong><span>Confirmed</span></div>
@@ -116,16 +125,14 @@ export async function renderMatchDaysPage(container, { role, uid }) {
         <h1 class="page-title">Match Days</h1>
         <p class="page-subtitle">Schedule, attendance, and calendar links for upcoming matches.</p>
       </div>
-      ${isAdmin ? `<button class="btn btn-primary" id="add-match-button" type="button">+ Add match day</button>` : ""}
+      ${isAdmin ? `<button class="btn btn-primary" id="add-match-button" type="button">+ New Match Day</button>` : ""}
     </div>
-    <div id="match-form-slot"></div>
     <div class="matchday-list" id="matchday-list">
       <p class="empty-state">Loading match days…</p>
     </div>
   `;
 
   const listEl = document.getElementById("matchday-list");
-  const formSlot = document.getElementById("match-form-slot");
 
   async function refresh() {
     try {
@@ -178,25 +185,31 @@ export async function renderMatchDaysPage(container, { role, uid }) {
   }
 
   function closeForm() {
-    formSlot.innerHTML = "";
+    closeModal();
   }
 
-  function openForm(match) {
-    formSlot.innerHTML = matchFormHtml(match || {});
-    const form = document.getElementById("match-form");
-    const errorEl = document.getElementById("match-form-error");
-    document.getElementById("match-form-cancel").addEventListener("click", closeForm);
+  async function openForm(match) {
+    const venues = await listVenues();
+    const overlay = openModal(matchFormHtml(match || {}, venues));
+    const form = overlay.querySelector("#match-form");
+    const errorEl = overlay.querySelector("#match-form-error");
+    overlay.querySelector("#match-modal-close").addEventListener("click", closeForm);
+    overlay.querySelector("#match-form-cancel").addEventListener("click", closeForm);
     form.addEventListener("submit", async (event) => {
       event.preventDefault();
       errorEl.hidden = true;
       const formData = new FormData(form);
       const id = String(formData.get("id") || "");
+      const venueId = String(formData.get("venueId") || "");
+      const venue = venues.find((item) => item.id === venueId);
       const payload = {
         title: String(formData.get("title") || "").trim(),
         date: String(formData.get("date") || ""),
         startTime: String(formData.get("startTime") || ""),
         endTime: String(formData.get("endTime") || ""),
-        venue: String(formData.get("venue") || "").trim()
+        venueId: venueId || null,
+        venueName: venue?.name || "",
+        venueAddress: venue?.address || ""
       };
       if (!payload.title || !payload.date || !payload.startTime) {
         errorEl.textContent = "Title, date, and start time are required.";

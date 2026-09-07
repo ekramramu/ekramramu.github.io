@@ -94,6 +94,27 @@ export async function setMatchResponse(matchId, uid, response) {
   });
 }
 
+export async function listVenues() {
+  const snapshot = await getDocs(query(collection(db, "venues"), orderBy("name", "asc")));
+  return snapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
+}
+
+export async function addVenue(venue) {
+  return addDoc(collection(db, "venues"), {
+    ...venue,
+    status: venue.status || "active",
+    createdAt: serverTimestamp()
+  });
+}
+
+export async function updateVenue(venueId, venue) {
+  return updateDoc(doc(db, "venues", venueId), venue);
+}
+
+export async function deleteVenue(venueId) {
+  return deleteDoc(doc(db, "venues", venueId));
+}
+
 export function summarizeTransactions(transactions) {
   let collections = 0;
   let expenses = 0;

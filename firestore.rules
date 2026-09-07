@@ -53,6 +53,12 @@ service cloud.firestore {
       }
     }
 
+    // Venue directory used by match days; only admins can manage it.
+    match /venues/{venueId} {
+      allow read: if isVerified();
+      allow write: if isAdmin();
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }

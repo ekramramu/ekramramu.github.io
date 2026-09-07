@@ -4,18 +4,45 @@ const NAV_ITEMS = [
   { path: "/dashboard", label: "Dashboard", icon: "▦" },
   { path: "/rules", label: "Rule", icon: "▤" },
   { path: "/players", label: "Player", icon: "◍" },
-  { path: "/match-days", label: "Match Days", icon: "◷" },
+  {
+    label: "Match Management",
+    icon: "◷",
+    children: [
+      { path: "/match-days", label: "Match Days" },
+      { path: "/venues", label: "Venues" }
+    ]
+  },
   { path: "/tournament-2026", label: "Tournament 2026", icon: "★" },
   { path: "/finance", label: "Finance", icon: "৳" }
 ];
 
 export function renderShell(appRoot, { activePath, profile, email }) {
-  const navHtml = NAV_ITEMS.map((item) => `
-    <a class="app-nav-link${activePath === item.path ? " active" : ""}" href="#${item.path}">
-      <span class="app-nav-icon" aria-hidden="true">${item.icon}</span>
-      <span>${item.label}</span>
-    </a>
-  `).join("");
+  const navHtml = NAV_ITEMS.map((item) => {
+    if (item.children) {
+      const groupActive = item.children.some((child) => child.path === activePath);
+      const childLinks = item.children.map((child) => `
+        <a class="app-nav-link app-nav-sublink${activePath === child.path ? " active" : ""}" href="#${child.path}">
+          <span>${child.label}</span>
+        </a>
+      `).join("");
+      return `
+        <div class="app-nav-group${groupActive ? " open" : ""}">
+          <button class="app-nav-link app-nav-toggle${groupActive ? " active" : ""}" type="button">
+            <span class="app-nav-icon" aria-hidden="true">${item.icon}</span>
+            <span>${item.label}</span>
+            <span class="app-nav-caret" aria-hidden="true">⌄</span>
+          </button>
+          <div class="app-nav-submenu">${childLinks}</div>
+        </div>
+      `;
+    }
+    return `
+      <a class="app-nav-link${activePath === item.path ? " active" : ""}" href="#${item.path}">
+        <span class="app-nav-icon" aria-hidden="true">${item.icon}</span>
+        <span>${item.label}</span>
+      </a>
+    `;
+  }).join("");
 
   const displayName = escapeHtml(profile?.name || email || "Member");
   const role = profile?.role === "admin" ? "Admin" : "Member";
@@ -54,6 +81,12 @@ export function renderShell(appRoot, { activePath, profile, email }) {
       </main>
     </div>
   `;
+
+  appRoot.querySelectorAll(".app-nav-toggle").forEach((button) => {
+    button.addEventListener("click", () => {
+      button.closest(".app-nav-group").classList.toggle("open");
+    });
+  });
 
   return document.getElementById("page-content");
 }
