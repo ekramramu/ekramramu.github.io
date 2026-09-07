@@ -189,7 +189,12 @@ export async function renderMatchDaysPage(container, { role, uid }) {
   }
 
   async function openForm(match) {
-    const venues = await listVenues();
+    let venues = [];
+    try {
+      venues = await listVenues();
+    } catch (error) {
+      console.error("Unable to load venues for the match day form", error);
+    }
     const overlay = openModal(matchFormHtml(match || {}, venues));
     const form = overlay.querySelector("#match-form");
     const errorEl = overlay.querySelector("#match-form-error");
