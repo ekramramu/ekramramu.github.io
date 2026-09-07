@@ -4,6 +4,7 @@ const NAV_ITEMS = [
   { path: "/dashboard", label: "Dashboard", icon: "▦" },
   { path: "/rules", label: "Rule", icon: "▤" },
   { path: "/players", label: "Player", icon: "◍" },
+  { path: "/match-days", label: "Match Days", icon: "◷" },
   { path: "/tournament-2026", label: "Tournament 2026", icon: "★" },
   { path: "/finance", label: "Finance", icon: "৳" }
 ];
@@ -23,7 +24,7 @@ export function renderShell(appRoot, { activePath, profile, email }) {
     <div class="app-shell">
       <aside class="app-sidebar">
         <div class="app-brand">
-          <span class="app-brand-mark" aria-hidden="true">⚽</span>
+          <img class="app-brand-mark" src="assets/logo-mark.svg" alt="" aria-hidden="true" />
           <span class="app-brand-title">SDFC</span>
         </div>
         <nav class="app-nav">${navHtml}</nav>

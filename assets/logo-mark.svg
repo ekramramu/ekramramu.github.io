@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-label="SDFC crest">
+  <circle cx="50" cy="50" r="50" fill="#d81f2a"/>
+  <circle cx="50" cy="48" r="27" fill="none" stroke="#ffffff" stroke-width="4"/>
+  <polygon points="50,30 60,38 56,50 44,50 40,38" fill="#ffffff"/>
+  <g stroke="#ffffff" stroke-width="3" stroke-linecap="round">
+    <path d="M50 30 L50 22"/>
+    <path d="M60 38 L70 32"/>
+    <path d="M56 50 L62 62"/>
+    <path d="M44 50 L38 62"/>
+    <path d="M40 38 L30 32"/>
+  </g>
+  <g stroke="#ffffff" stroke-width="5" stroke-linecap="round">
+    <path d="M18 66 L34 82"/>
+    <path d="M14 78 L26 90"/>
+  </g>
+  <polygon points="26,20 28,26 34,26 29,30 31,36 26,32 21,36 23,30 18,26 24,26" fill="#ffffff"/>
+</svg>

@@ -6,10 +6,11 @@ import { renderRulesPage } from "./pages/rules.js";
 import { renderPlayersPage } from "./pages/players.js";
 import { renderFinancePage } from "./pages/finance.js";
 import { renderTournamentPage } from "./pages/tournament.js";
+import { renderMatchDaysPage } from "./pages/matchDays.js";
 import { registerRoute, setNotFoundHandler, startRouter, navigate, getCurrentPath } from "./router.js";
 
 const appRoot = document.querySelector("#app");
-const PROTECTED_PATHS = ["/dashboard", "/rules", "/players", "/tournament-2026", "/finance"];
+const PROTECTED_PATHS = ["/dashboard", "/rules", "/players", "/match-days", "/tournament-2026", "/finance"];
 
 let authState = { status: "loading" };
 let currentProfile = null;
@@ -53,13 +54,15 @@ function renderCurrentView() {
     logoutButton.addEventListener("click", () => logoutAccount());
   }
 
-  const pageContext = { profile: currentProfile, email: authState.user.email, role };
+  const pageContext = { profile: currentProfile, email: authState.user.email, role, uid: authState.user.uid };
   if (path === "/dashboard") {
     renderDashboardPage(content, pageContext);
   } else if (path === "/rules") {
     renderRulesPage(content);
   } else if (path === "/players") {
     renderPlayersPage(content, pageContext);
+  } else if (path === "/match-days") {
+    renderMatchDaysPage(content, pageContext);
   } else if (path === "/tournament-2026") {
     renderTournamentPage(content);
   } else if (path === "/finance") {

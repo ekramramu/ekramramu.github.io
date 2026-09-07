@@ -41,6 +41,18 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    // Match day schedule is admin-managed; every verified member can view it.
+    match /matchDays/{matchId} {
+      allow read: if isVerified();
+      allow write: if isAdmin();
+
+      // Each member can only read/write their own attendance response.
+      match /rsvps/{rsvpId} {
+        allow read: if isVerified();
+        allow write: if isVerified() && request.auth.uid == rsvpId;
+      }
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }

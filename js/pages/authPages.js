@@ -6,7 +6,7 @@ function authShell(title, subtitle, bodyHtml) {
     <div class="auth-screen">
       <div class="auth-card">
         <div class="auth-brand">
-          <span class="auth-brand-mark" aria-hidden="true">⚽</span>
+          <img class="auth-brand-mark" src="assets/logo-mark.svg" alt="" aria-hidden="true" />
           <span class="auth-brand-title">SDFC</span>
         </div>
         <h1 class="auth-title">${title}</h1>

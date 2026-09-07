@@ -7,6 +7,7 @@ import {
   orderBy,
   query,
   serverTimestamp,
+  setDoc,
   updateDoc
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-lite.js";
 import { db } from "./firebase.js";
@@ -59,6 +60,38 @@ export async function addTransaction(transaction) {
 
 export async function deleteTransaction(transactionId) {
   return deleteDoc(doc(db, "financeTransactions", transactionId));
+}
+
+export async function listMatchDays() {
+  const snapshot = await getDocs(query(collection(db, "matchDays"), orderBy("date", "asc")));
+  return snapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
+}
+
+export async function addMatchDay(matchDay) {
+  return addDoc(collection(db, "matchDays"), {
+    ...matchDay,
+    createdAt: serverTimestamp()
+  });
+}
+
+export async function updateMatchDay(matchId, matchDay) {
+  return updateDoc(doc(db, "matchDays", matchId), matchDay);
+}
+
+export async function deleteMatchDay(matchId) {
+  return deleteDoc(doc(db, "matchDays", matchId));
+}
+
+export async function listMatchResponses(matchId) {
+  const snapshot = await getDocs(collection(db, "matchDays", matchId, "rsvps"));
+  return snapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
+}
+
+export async function setMatchResponse(matchId, uid, response) {
+  return setDoc(doc(db, "matchDays", matchId, "rsvps", uid), {
+    response,
+    updatedAt: serverTimestamp()
+  });
 }
 
 export function summarizeTransactions(transactions) {
