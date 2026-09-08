@@ -10,11 +10,14 @@ club/tournament rules, player roster, and finance tracking.
 - `js/firebase-config.js` — public Firebase web config.
 - `js/firebase.js` — shared Firebase app/auth/Firestore instances.
 - `js/auth.js` — register/login/logout/email-verification logic.
-- `js/data.js` — Firestore CRUD for players and finance transactions.
+- `js/data.js` — Firestore CRUD for players, match days/venues, and finance records
+  (Collections, Bill Payments, and the legacy transaction ledger).
 - `js/router.js` — minimal hash-based router.
 - `js/layout.js` — sidebar app shell.
 - `js/app.js` — wires auth state + router + pages together.
-- `js/pages/` — `authPages.js` (login/register/verify), `dashboard.js`, `rules.js`, `players.js`, `finance.js`.
+- `js/pages/` — `authPages.js` (login/register/verify), `dashboard.js`, `rules.js`, `players.js`,
+  `finance.js` (Collections and Bill Payment ledgers, at `#/finance/collections` and
+  `#/finance/bill-payments`; `#/finance` redirects to Collections).
 - `firestore.rules` — role-based security rules.
 
 ## 1. Firebase setup
@@ -38,11 +41,25 @@ club/tournament rules, player roster, and finance tracking.
   - Created automatically at registration (from the signup form) or self-healed on next
     sign-in if missing. `status`/`teamsId` are admin/moderator-only fields; everything else
     is player-owned and editable from My Player Profile.
+- `financeCollections/{id}`: `{ transactionId, voucher, playerId, payerName, collectionDate,
+  paymentMonth, amount, receivedInto, comments, createdAt, updatedAt }` — one row per player
+  payment collection, shown on the **Collections (+)** page. `transactionId` (`COL...`) and
+  `voucher` (`RV<year>...`) are generated client-side and never change after creation.
+- `financeBillPayments/{id}`: `{ billId, voucher, costType, paymentDate, amount, paidFrom,
+  comments, createdAt, updatedAt }` — one row per club expense, shown on the **Bill Payment (-)**
+  page. `billId` (`BIL...`) and `voucher` (`PV<year>...`) are generated client-side and never
+  change after creation.
 - `financeTransactions/{id}`: `{ type: "collection" | "expense", amount, description, date, createdAt }`
+  — legacy ledger predating the two typed collections above. Kept read-only: `js/data.js`
+  normalizes each row into a labeled, non-editable Collections or Bill Payment entry so
+  historical records stay visible instead of being discarded. There is no scripted migration;
+  if you want legacy rows to become fully editable, manually re-enter them as
+  `financeCollections`/`financeBillPayments` documents and then remove the old
+  `financeTransactions` docs once totals reconcile.
 
-Only verified, signed-in users can read `players`/`financeTransactions`. Only
-admins/moderators can write to them (players can also create/edit their own
-player record, excluding `status`/`teamsId`). Every signed-in user can
+Only verified, signed-in users can read `players`/`financeTransactions`/`financeCollections`/
+`financeBillPayments`. Only admins/moderators can write to them (players can also create/edit
+their own player record, excluding `status`/`teamsId`). Every signed-in user can
 read/create their own `users/{uid}` profile.
 
 ## 3. Registration & login flow

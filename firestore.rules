@@ -62,7 +62,19 @@ service cloud.firestore {
     }
 
     // Any verified member can view finance records; only staff can edit them.
+    // financeTransactions is the legacy ledger kept read-only for the Collections/
+    // Bill Payment compatibility period; new writes go to the typed collections below.
     match /financeTransactions/{transactionId} {
+      allow read: if isVerified();
+      allow write: if isStaff();
+    }
+
+    match /financeCollections/{collectionId} {
+      allow read: if isVerified();
+      allow write: if isStaff();
+    }
+
+    match /financeBillPayments/{billPaymentId} {
       allow read: if isVerified();
       allow write: if isStaff();
     }

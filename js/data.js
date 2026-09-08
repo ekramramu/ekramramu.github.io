@@ -84,6 +84,82 @@ export async function deleteTransaction(transactionId) {
   return deleteDoc(doc(db, "financeTransactions", transactionId));
 }
 
+// Legacy financeTransactions predate the typed Collections/Bill Payment ledgers.
+// They stay readable (never migrated automatically) and render as read-only rows.
+export function normalizeLegacyCollections(transactions) {
+  return transactions
+    .filter((tx) => tx.type !== "expense")
+    .map((tx) => ({
+      id: tx.id,
+      transactionId: `LEGACY-${tx.id.slice(0, 8).toUpperCase()}`,
+      voucher: "-",
+      playerId: "",
+      payerName: tx.description || "Legacy record",
+      collectionDate: tx.date || "",
+      paymentMonth: tx.date || "",
+      amount: Number(tx.amount) || 0,
+      receivedInto: "",
+      comments: tx.description || "",
+      legacy: true
+    }));
+}
+
+export function normalizeLegacyBillPayments(transactions) {
+  return transactions
+    .filter((tx) => tx.type === "expense")
+    .map((tx) => ({
+      id: tx.id,
+      billId: `LEGACY-${tx.id.slice(0, 8).toUpperCase()}`,
+      voucher: "-",
+      costType: tx.description || "Miscellaneous",
+      paymentDate: tx.date || "",
+      amount: Number(tx.amount) || 0,
+      paidFrom: "",
+      comments: tx.description || "",
+      legacy: true
+    }));
+}
+
+export async function listFinanceCollections() {
+  const snapshot = await getDocs(query(collection(db, "financeCollections"), orderBy("collectionDate", "desc")));
+  return snapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
+}
+
+export async function addFinanceCollection(payload) {
+  return addDoc(collection(db, "financeCollections"), {
+    ...payload,
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp()
+  });
+}
+
+export async function updateFinanceCollection(collectionId, payload) {
+  return updateDoc(doc(db, "financeCollections", collectionId), {
+    ...payload,
+    updatedAt: serverTimestamp()
+  });
+}
+
+export async function listFinanceBillPayments() {
+  const snapshot = await getDocs(query(collection(db, "financeBillPayments"), orderBy("paymentDate", "desc")));
+  return snapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
+}
+
+export async function addFinanceBillPayment(payload) {
+  return addDoc(collection(db, "financeBillPayments"), {
+    ...payload,
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp()
+  });
+}
+
+export async function updateFinanceBillPayment(billPaymentId, payload) {
+  return updateDoc(doc(db, "financeBillPayments", billPaymentId), {
+    ...payload,
+    updatedAt: serverTimestamp()
+  });
+}
+
 export async function listMatchDays() {
   const snapshot = await getDocs(query(collection(db, "matchDays"), orderBy("date", "asc")));
   return snapshot.docs.map((item) => ({ id: item.id, ...item.data() }));

@@ -20,7 +20,14 @@ const NAV_ITEMS = [
       { path: "/players/monthly-profile", label: "Player Monthly Profile" }
     ]
   },
-  { path: "/finance", label: "Finance", icon: "assets/finence.png" },
+  {
+    label: "Finance",
+    icon: "assets/finence.png",
+    children: [
+      { path: "/finance/collections", label: "Collections (+)" },
+      { path: "/finance/bill-payments", label: "Bill Payment (-)" }
+    ]
+  },
   { path: "/rules", label: "Rule", icon: "assets/rule.png" },
   { path: "/settings", label: "Settings", icon: "assets/settings.png" }
 ];

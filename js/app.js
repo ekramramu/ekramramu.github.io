@@ -6,7 +6,7 @@ import { needsProfileCompletion, renderCompleteProfilePage } from "./pages/compl
 import { renderDashboardPage } from "./pages/dashboard.js";
 import { renderRulesPage } from "./pages/rules.js";
 import { renderPlayersPage, renderNewPlayerPage, renderMyProfilePage, renderMonthlyProfilePage } from "./pages/players.js";
-import { renderFinancePage } from "./pages/finance.js";
+import { renderCollectionsPage, renderBillPaymentsPage } from "./pages/finance.js";
 import { renderTournamentPage } from "./pages/tournament.js";
 import { renderMatchDaysPage } from "./pages/matchDays.js";
 import { renderVenuesPage } from "./pages/venues.js";
@@ -15,7 +15,7 @@ import { registerRoute, setNotFoundHandler, startRouter, navigate, getCurrentPat
 
 const appRoot = document.querySelector("#app");
 const ONBOARDING_PATH = "/complete-profile";
-const PROTECTED_PATHS = ["/dashboard", ONBOARDING_PATH, "/rules", "/players", "/players/new", "/players/my-profile", "/players/monthly-profile", "/match-days", "/venues", "/tournament-2026", "/finance", "/settings"];
+const PROTECTED_PATHS = ["/dashboard", ONBOARDING_PATH, "/rules", "/players", "/players/new", "/players/my-profile", "/players/monthly-profile", "/match-days", "/venues", "/tournament-2026", "/finance", "/finance/collections", "/finance/bill-payments", "/settings"];
 
 let authState = { status: "loading" };
 let currentProfile = null;
@@ -105,7 +105,11 @@ function renderCurrentView() {
   } else if (path === "/tournament-2026") {
     renderTournamentPage(content);
   } else if (path === "/finance") {
-    renderFinancePage(content, pageContext);
+    navigate("/finance/collections");
+  } else if (path === "/finance/collections") {
+    renderCollectionsPage(content, pageContext);
+  } else if (path === "/finance/bill-payments") {
+    renderBillPaymentsPage(content, pageContext);
   } else if (path === "/settings") {
     renderSettingsPage(content, pageContext);
   }
