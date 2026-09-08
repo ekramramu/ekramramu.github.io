@@ -36,13 +36,13 @@ export function renderRulesPage(container) {
       <h1 class="page-title">Club &amp; Tournament Rules</h1>
     </div>
     <div class="tabs">
-      <button class="tab-button active" data-tab="club" type="button">Club Rule</button>
-      <button class="tab-button" data-tab="tournament" type="button">Tournament Rule</button>
+      <button class="tab-button active" data-tab="tournament" type="button">Tournament Rule</button>
+      <button class="tab-button" data-tab="club" type="button">Club Rule</button>
     </div>
-    <div class="tab-panel" data-panel="club">
+    <div class="tab-panel" data-panel="club" hidden>
       <p class="empty-state">ক্লাব নিয়মাবলি শীঘ্রই যুক্ত করা হবে।</p>
     </div>
-    <div class="tab-panel" data-panel="tournament" hidden>
+    <div class="tab-panel" data-panel="tournament">
       <div class="rules-grid">
         ${tournamentRules.map(([heading, items], index) => renderRuleCard(heading, items, index)).join("")}
       </div>

@@ -8,7 +8,8 @@ import {
   query,
   serverTimestamp,
   setDoc,
-  updateDoc
+  updateDoc,
+  where
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-lite.js";
 import { db } from "./firebase.js";
 import { DEFAULT_PLAYERS } from "./clubData.js";
@@ -40,6 +41,18 @@ export async function addPlayer(player) {
 
 export async function updatePlayer(playerId, player) {
   return updateDoc(doc(db, "players", playerId), player);
+}
+
+// Self-heals a missing player record for the signed-in user (e.g. accounts
+// registered before this link existed), so nobody has to click a button.
+export async function ensurePlayerProfile({ email, name }) {
+  const snapshot = await getDocs(query(collection(db, "players"), where("email", "==", email)));
+  if (!snapshot.empty) {
+    const existing = snapshot.docs[0];
+    return { id: existing.id, ...existing.data() };
+  }
+  const ref = await addPlayer({ name: name || email, email, status: "active" });
+  return { id: ref.id, name: name || email, email, status: "active" };
 }
 
 export async function deletePlayer(playerId) {

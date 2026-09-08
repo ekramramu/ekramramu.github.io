@@ -26,27 +26,35 @@ club/tournament rules, player roster, and finance tracking.
 
 ## 2. Data model
 
-- `users/{uid}`: `{ name, email, role: "member" | "admin", createdAt }`
-  - Created automatically at registration with `role: "member"`.
-  - Only an existing admin can promote a user to `"admin"` (rules block self-promotion).
+- `users/{uid}`: `{ name, email, role: "player" | "moderator" | "admin", createdAt }`
+  - Created automatically at registration with `role: "player"`.
+  - Only an existing admin can promote a user to `"moderator"`/`"admin"` (rules block self-promotion).
+  - Moderators have the same content permissions as admins (players, finance, match days,
+    venues) but cannot manage other users' roles — that stays admin-only.
   - **Bootstrapping the first admin:** register an account normally, then in the
     Firebase Console → Firestore, open `users/{that-uid}` and manually change
     `role` to `"admin"`.
-- `players/{id}`: `{ name, position, jerseyNumber, phone, status: "active" | "inactive", createdAt }`
+- `players/{id}`: `{ name, email, position, jerseyNumber, phone, status: "active" | "inactive", teamsId, photoUrl, createdAt }`
+  - Created automatically at registration (from the signup form) or self-healed on next
+    sign-in if missing. `status`/`teamsId` are admin/moderator-only fields; everything else
+    is player-owned and editable from My Player Profile.
 - `financeTransactions/{id}`: `{ type: "collection" | "expense", amount, description, date, createdAt }`
 
 Only verified, signed-in users can read `players`/`financeTransactions`. Only
-admins can write to them. Every signed-in user can read/create their own
-`users/{uid}` profile.
+admins/moderators can write to them (players can also create/edit their own
+player record, excluding `status`/`teamsId`). Every signed-in user can
+read/create their own `users/{uid}` profile.
 
 ## 3. Registration & login flow
 
-1. A new user registers with name/email/password.
-2. A confirmation email is sent automatically (Firebase Auth).
+1. A new user registers with name/email/password plus playing position/mobile/jersey number.
+2. A confirmation email is sent automatically (Firebase Auth), and a linked `players/{id}`
+   record is created from the signup data.
 3. The account is inactive (blocked from the dashboard) until the user clicks
    the confirmation link and returns to the "I've confirmed, continue" step.
-4. Once verified, the user lands on the Dashboard with `role: "member"` by
-   default (view-only for Players/Finance) until an admin promotes them.
+4. Once verified, the user lands on the Dashboard with `role: "player"` by
+   default (view-only for Players/Finance) until an admin promotes them to
+   `"moderator"` or `"admin"`.
 
 ## 4. Run locally
 

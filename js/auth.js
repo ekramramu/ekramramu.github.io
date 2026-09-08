@@ -1,12 +1,16 @@
 import {
   createUserWithEmailAndPassword,
+  EmailAuthProvider,
   onAuthStateChanged,
+  reauthenticateWithCredential,
   sendEmailVerification,
+  sendPasswordResetEmail,
   signInWithEmailAndPassword,
   signOut,
+  updatePassword,
   updateProfile
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { doc, getDoc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-lite.js";
+import { doc, getDoc, setDoc, updateDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-lite.js";
 import { auth, db } from "./firebase.js";
 
 export function watchAuthState(callback) {
@@ -23,7 +27,7 @@ export async function registerAccount({ name, email, password }) {
     await setDoc(doc(db, "users", credential.user.uid), {
       name,
       email,
-      role: "member",
+      role: "player",
       createdAt: serverTimestamp()
     });
   } catch (error) {
@@ -49,6 +53,24 @@ export async function resendVerificationEmail() {
   });
 }
 
+export async function requestPasswordReset(email) {
+  await sendPasswordResetEmail(auth, email, {
+    url: `${window.location.origin}${window.location.pathname}#/login`
+  });
+}
+
+export async function changePassword({ currentPassword, newPassword }) {
+  const user = auth.currentUser;
+  if (!user) throw new Error("Not signed in.");
+  const credential = EmailAuthProvider.credential(user.email, currentPassword);
+  await reauthenticateWithCredential(user, credential);
+  await updatePassword(user, newPassword);
+}
+
+export async function updateUserPreferences(uid, patch) {
+  await updateDoc(doc(db, "users", uid), patch);
+}
+
 export async function refreshCurrentUser() {
   if (!auth.currentUser) return null;
   await auth.currentUser.reload();
@@ -61,8 +83,8 @@ export async function getUserProfile(uid) {
 }
 
 // Creates the Firestore profile doc if it's missing (e.g. it failed to save
-// during registration because Firestore wasn't set up yet). Always role:"member";
-// role escalation requires an existing admin per firestore.rules.
+// during registration because Firestore wasn't set up yet). Always role:"player";
+// role escalation to "moderator"/"admin" requires an existing admin per firestore.rules.
 export async function ensureUserProfile(user) {
   const ref = doc(db, "users", user.uid);
   const snapshot = await getDoc(ref);
@@ -72,7 +94,7 @@ export async function ensureUserProfile(user) {
   const profile = {
     name: user.displayName || user.email,
     email: user.email,
-    role: "member",
+    role: "player",
     createdAt: serverTimestamp()
   };
   await setDoc(ref, profile);

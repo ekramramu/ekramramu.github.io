@@ -1,19 +1,28 @@
 import { escapeHtml } from "./utils.js";
 
 const NAV_ITEMS = [
-  { path: "/dashboard", label: "Dashboard", icon: "▦" },
-  { path: "/rules", label: "Rule", icon: "▤" },
-  { path: "/players", label: "Player", icon: "◍" },
+  { path: "/dashboard", label: "Dashboard", icon: "assets/dashboard.png" },
   {
     label: "Match Management",
-    icon: "◷",
+    icon: "assets/football-field.png",
     children: [
       { path: "/match-days", label: "Match Days" },
       { path: "/venues", label: "Venues" }
     ]
   },
-  { path: "/tournament-2026", label: "Tournament 2026", icon: "★" },
-  { path: "/finance", label: "Finance", icon: "৳" }
+  { path: "/tournament-2026", label: "Tournament 2026", icon: "assets/turnement.png" },
+  {
+    label: "Player",
+    icon: "assets/player.png",
+    children: [
+      { path: "/players", label: "Player List" },
+      { path: "/players/my-profile", label: "My Player Profile" },
+      { path: "/players/monthly-profile", label: "Player Monthly Profile" }
+    ]
+  },
+  { path: "/finance", label: "Finance", icon: "assets/finence.png" },
+  { path: "/rules", label: "Rule", icon: "assets/rule.png" },
+  { path: "/settings", label: "Settings", icon: "assets/settings.png" }
 ];
 
 export function renderShell(appRoot, { activePath, profile, email }) {
@@ -28,7 +37,7 @@ export function renderShell(appRoot, { activePath, profile, email }) {
       return `
         <div class="app-nav-group${groupActive ? " open" : ""}">
           <button class="app-nav-link app-nav-toggle${groupActive ? " active" : ""}" type="button">
-            <span class="app-nav-icon" aria-hidden="true">${item.icon}</span>
+            <img class="app-nav-icon" src="${item.icon}" alt="" aria-hidden="true" />
             <span>${item.label}</span>
             <span class="app-nav-caret" aria-hidden="true">⌄</span>
           </button>
@@ -38,22 +47,22 @@ export function renderShell(appRoot, { activePath, profile, email }) {
     }
     return `
       <a class="app-nav-link${activePath === item.path ? " active" : ""}" href="#${item.path}">
-        <span class="app-nav-icon" aria-hidden="true">${item.icon}</span>
+        <img class="app-nav-icon" src="${item.icon}" alt="" aria-hidden="true" />
         <span>${item.label}</span>
       </a>
     `;
   }).join("");
 
   const displayName = escapeHtml(profile?.name || email || "Member");
-  const role = profile?.role === "admin" ? "Admin" : "Member";
+  const role = profile?.role === "admin" ? "Admin" : profile?.role === "moderator" ? "Moderator" : "Player";
 
   appRoot.innerHTML = `
     <div class="app-shell">
       <aside class="app-sidebar" id="app-sidebar">
-        <div class="app-brand">
-          <img class="app-brand-mark" src="assets/logo-mark.svg" alt="" aria-hidden="true" />
+        <a class="app-brand" href="#/dashboard" title="Go to Dashboard">
+          <img class="app-brand-mark" src="assets/club-logo.png" alt="" aria-hidden="true" />
           <span class="app-brand-title">SDFC</span>
-        </div>
+        </a>
         <nav class="app-nav">${navHtml}</nav>
         <div class="app-sidebar-footer">
           <div class="app-user">

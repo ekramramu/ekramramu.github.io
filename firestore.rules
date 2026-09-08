@@ -10,41 +10,67 @@ service cloud.firestore {
       return isSignedIn() && request.auth.token.email_verified == true;
     }
 
+    function userRole() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+    }
+
     function isAdmin() {
       return isVerified()
         && exists(/databases/$(database)/documents/users/$(request.auth.uid))
-        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+        && userRole() == 'admin';
     }
 
-    // One profile document per authenticated user; role can only be
-    // escalated by an existing admin, never by the user themselves.
+    // Moderators get the same day-to-day content permissions as admins
+    // (players/finance/match days/venues) but never manage user roles.
+    function isModerator() {
+      return isVerified()
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && userRole() == 'moderator';
+    }
+
+    function isStaff() {
+      return isAdmin() || isModerator();
+    }
+
+    // One profile document per authenticated user; role defaults to "player"
+    // at signup and can only be escalated by an existing admin, never by the
+    // user themselves.
     match /users/{userId} {
       allow get: if isAdmin() || (isVerified() && request.auth.uid == userId);
       allow create: if isSignedIn()
         && request.auth.uid == userId
-        && request.resource.data.role == 'member';
+        && request.resource.data.role == 'player';
       allow update: if isAdmin()
         || (isVerified() && request.auth.uid == userId
             && request.resource.data.role == resource.data.role);
       allow delete: if false;
     }
 
-    // Any verified member can view the roster; only admins can edit it.
+    // Any verified member can view the roster. Admins/moderators can edit anything.
+    // A player can also create/edit their own record (matched by email) but
+    // may not touch status/teamsId — those stay staff-only fields.
     match /players/{playerId} {
       allow read: if isVerified();
-      allow write: if isAdmin();
+      allow create: if isStaff()
+        || (isSignedIn() && request.resource.data.email == request.auth.token.email);
+      allow update: if isStaff()
+        || (isVerified()
+            && resource.data.email == request.auth.token.email
+            && request.resource.data.status == resource.data.status
+            && request.resource.data.teamsId == resource.data.teamsId);
+      allow delete: if isStaff();
     }
 
-    // Any verified member can view finance records; only admins can edit them.
+    // Any verified member can view finance records; only staff can edit them.
     match /financeTransactions/{transactionId} {
       allow read: if isVerified();
-      allow write: if isAdmin();
+      allow write: if isStaff();
     }
 
-    // Match day schedule is admin-managed; every verified member can view it.
+    // Match day schedule is staff-managed; every verified member can view it.
     match /matchDays/{matchId} {
       allow read: if isVerified();
-      allow write: if isAdmin();
+      allow write: if isStaff();
 
       // Each member can only read/write their own attendance response.
       match /rsvps/{rsvpId} {
@@ -53,10 +79,10 @@ service cloud.firestore {
       }
     }
 
-    // Venue directory used by match days; only admins can manage it.
+    // Venue directory used by match days; only staff can manage it.
     match /venues/{venueId} {
       allow read: if isVerified();
-      allow write: if isAdmin();
+      allow write: if isStaff();
     }
 
     match /{document=**} {

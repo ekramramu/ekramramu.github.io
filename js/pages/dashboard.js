@@ -75,7 +75,7 @@ export async function renderDashboardPage(container, { profile, email, role, uid
         <div class="stat-card compact-stat"><span class="stat-label">Total Collections</span><strong class="stat-value" id="dash-collections">—</strong><span class="stat-accent positive">$</span></div>
         <div class="stat-card compact-stat"><span class="stat-label">Total Expenses</span><strong class="stat-value" id="dash-expenses">—</strong><span class="stat-accent negative">−</span></div>
         <div class="stat-card compact-stat"><span class="stat-label">Total Players</span><strong class="stat-value" id="dash-players">—</strong></div>
-        <div class="stat-card compact-stat payment-due"><span class="stat-label">Role</span><strong class="stat-value">${role === "admin" ? "Admin" : "Member"}</strong><span class="stat-note">${role === "admin" ? "You manage Players and Finance" : "View-only access"}</span></div>
+        <div class="stat-card compact-stat payment-due"><span class="stat-label">Role</span><strong class="stat-value">${role === "admin" ? "Admin" : role === "moderator" ? "Moderator" : "Player"}</strong><span class="stat-note">${role === "admin" || role === "moderator" ? "You manage Players and Finance" : "View-only access"}</span></div>
       </section>
       <div id="dashboard-match-slot">
         ${matchCardHtml(null, {})}

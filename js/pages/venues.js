@@ -51,7 +51,7 @@ function venueFormHtml(venue = {}) {
 }
 
 export async function renderVenuesPage(container, { role }) {
-  const isAdmin = role === "admin";
+  const isAdmin = role === "admin" || role === "moderator";
   container.innerHTML = `
     <div class="page-header">
       <h1 class="page-title"><span class="card-icon">▤</span> Venues</h1>

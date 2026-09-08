@@ -47,7 +47,7 @@ function transactionFormHtml() {
 }
 
 export async function renderFinancePage(container, { role }) {
-  const isAdmin = role === "admin";
+  const isAdmin = role === "admin" || role === "moderator";
   container.innerHTML = `
     <div class="page-header">
       <h1 class="page-title">Finance</h1>

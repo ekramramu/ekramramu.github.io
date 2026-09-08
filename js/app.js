@@ -1,17 +1,19 @@
 import { watchAuthState, getUserProfile, ensureUserProfile, logoutAccount } from "./auth.js";
+import { ensurePlayerProfile } from "./data.js";
 import { renderShell } from "./layout.js";
-import { renderLogin, renderRegister, renderVerifyNotice } from "./pages/authPages.js";
+import { renderLogin, renderRegister, renderVerifyNotice, renderForgotPassword } from "./pages/authPages.js";
 import { renderDashboardPage } from "./pages/dashboard.js";
 import { renderRulesPage } from "./pages/rules.js";
-import { renderPlayersPage } from "./pages/players.js";
+import { renderPlayersPage, renderNewPlayerPage, renderMyProfilePage, renderMonthlyProfilePage } from "./pages/players.js";
 import { renderFinancePage } from "./pages/finance.js";
 import { renderTournamentPage } from "./pages/tournament.js";
 import { renderMatchDaysPage } from "./pages/matchDays.js";
 import { renderVenuesPage } from "./pages/venues.js";
+import { renderSettingsPage } from "./pages/settings.js";
 import { registerRoute, setNotFoundHandler, startRouter, navigate, getCurrentPath } from "./router.js";
 
 const appRoot = document.querySelector("#app");
-const PROTECTED_PATHS = ["/dashboard", "/rules", "/players", "/match-days", "/venues", "/tournament-2026", "/finance"];
+const PROTECTED_PATHS = ["/dashboard", "/rules", "/players", "/players/new", "/players/my-profile", "/players/monthly-profile", "/match-days", "/venues", "/tournament-2026", "/finance", "/settings"];
 
 let authState = { status: "loading" };
 let currentProfile = null;
@@ -26,6 +28,8 @@ function renderCurrentView() {
   if (authState.status === "signed-out") {
     if (path === "/register") {
       renderRegister(appRoot);
+    } else if (path === "/forgot-password") {
+      renderForgotPassword(appRoot);
     } else {
       renderLogin(appRoot);
     }
@@ -48,7 +52,7 @@ function renderCurrentView() {
     return;
   }
 
-  const role = currentProfile && currentProfile.role === "admin" ? "admin" : "member";
+  const role = currentProfile?.role === "admin" ? "admin" : currentProfile?.role === "moderator" ? "moderator" : "player";
   const content = renderShell(appRoot, { activePath: path, profile: currentProfile, email: authState.user.email });
   const logoutButton = document.getElementById("logout-button");
   if (logoutButton) {
@@ -62,6 +66,16 @@ function renderCurrentView() {
     renderRulesPage(content);
   } else if (path === "/players") {
     renderPlayersPage(content, pageContext);
+  } else if (path === "/players/new") {
+    if (role !== "admin" && role !== "moderator") {
+      navigate("/players");
+      return;
+    }
+    renderNewPlayerPage(content, pageContext);
+  } else if (path === "/players/my-profile") {
+    renderMyProfilePage(content, pageContext);
+  } else if (path === "/players/monthly-profile") {
+    renderMonthlyProfilePage(content, pageContext);
   } else if (path === "/match-days") {
     renderMatchDaysPage(content, pageContext);
   } else if (path === "/venues") {
@@ -70,10 +84,12 @@ function renderCurrentView() {
     renderTournamentPage(content);
   } else if (path === "/finance") {
     renderFinancePage(content, pageContext);
+  } else if (path === "/settings") {
+    renderSettingsPage(content, pageContext);
   }
 }
 
-[...PROTECTED_PATHS, "/login", "/register"].forEach((path) => registerRoute(path, renderCurrentView));
+[...PROTECTED_PATHS, "/login", "/register", "/forgot-password"].forEach((path) => registerRoute(path, renderCurrentView));
 setNotFoundHandler(renderCurrentView);
 
 watchAuthState(async (user) => {
@@ -97,6 +113,11 @@ watchAuthState(async (user) => {
   } catch (error) {
     console.error("Unable to load user profile", error);
     currentProfile = null;
+  }
+  try {
+    await ensurePlayerProfile({ email: user.email, name: currentProfile?.name || user.displayName });
+  } catch (error) {
+    console.error("Unable to link player profile", error);
   }
   renderCurrentView();
 });
