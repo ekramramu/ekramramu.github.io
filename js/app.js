@@ -106,6 +106,11 @@ watchAuthState(async (user) => {
   }
   authState = { status: "signed-in", user };
   try {
+    await user.getIdToken(true);
+  } catch (error) {
+    console.error("Unable to refresh authentication", error);
+  }
+  try {
     currentProfile = await getUserProfile(user.uid);
     if (!currentProfile) {
       currentProfile = await ensureUserProfile(user);
