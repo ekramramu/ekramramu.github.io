@@ -64,13 +64,6 @@ export function renderShell(appRoot, { activePath, profile, email }) {
           <span class="app-brand-title">SDFC</span>
         </a>
         <nav class="app-nav">${navHtml}</nav>
-        <div class="app-sidebar-footer">
-          <div class="app-user">
-            <span class="app-user-name">${displayName}</span>
-            <span class="badge badge-${role.toLowerCase()}">${role}</span>
-          </div>
-          <button class="btn btn-secondary btn-block" id="logout-button" type="button">Log out</button>
-        </div>
       </aside>
       <main class="app-main">
         <header class="app-topbar">
@@ -83,7 +76,22 @@ export function renderShell(appRoot, { activePath, profile, email }) {
           <div class="topbar-actions">
             <button class="icon-button" type="button" aria-label="Toggle theme" title="Toggle theme">◐</button>
             <button class="icon-button notification-button" type="button" aria-label="Notifications" title="Notifications">♧<span>7</span></button>
-            <div class="topbar-user"><span class="topbar-avatar" aria-hidden="true">◉</span><strong>${displayName}</strong><span aria-hidden="true">⌄</span></div>
+            <div class="topbar-account">
+              <button class="topbar-user" id="account-menu-button" type="button" aria-expanded="false" aria-controls="account-menu">
+                <span class="topbar-avatar" aria-hidden="true">◉</span>
+                <strong>${displayName}</strong>
+                <span class="topbar-user-caret" aria-hidden="true">⌄</span>
+              </button>
+              <div class="account-menu" id="account-menu" hidden>
+                <div class="account-menu-identity">
+                  <strong>${displayName}</strong>
+                  <span>${escapeHtml(email || "")}</span>
+                  <span class="badge badge-${role.toLowerCase()}">${role}</span>
+                </div>
+                <a href="#/players/my-profile">Edit profile</a>
+                <button id="logout-button" type="button">Log out</button>
+              </div>
+            </div>
           </div>
         </header>
         <div class="app-content" id="page-content"></div>
@@ -102,6 +110,28 @@ export function renderShell(appRoot, { activePath, profile, email }) {
   menuButton.addEventListener("click", () => {
     const collapsed = shell.classList.toggle("sidebar-collapsed");
     menuButton.setAttribute("aria-expanded", String(!collapsed));
+  });
+
+  const account = appRoot.querySelector(".topbar-account");
+  const accountButton = appRoot.querySelector("#account-menu-button");
+  const accountMenu = appRoot.querySelector("#account-menu");
+  const closeAccountMenu = () => {
+    accountMenu.hidden = true;
+    accountButton.setAttribute("aria-expanded", "false");
+  };
+  accountButton.addEventListener("click", () => {
+    const opening = accountMenu.hidden;
+    accountMenu.hidden = !opening;
+    accountButton.setAttribute("aria-expanded", String(opening));
+  });
+  appRoot.onclick = (event) => {
+    if (!account.contains(event.target)) closeAccountMenu();
+  };
+  account.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+      closeAccountMenu();
+      accountButton.focus();
+    }
   });
 
   return document.getElementById("page-content");

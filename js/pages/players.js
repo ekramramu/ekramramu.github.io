@@ -370,8 +370,10 @@ export async function renderMyProfilePage(container, { email, uid, role, profile
     <div class="profile-banner">
       <img class="profile-banner-watermark" src="assets/club-logo.png" alt="" aria-hidden="true" />
       <div class="profile-avatar-wrap">
-        <span class="profile-avatar">${mine.photoUrl ? `<img src="${escapeHtml(mine.photoUrl)}" alt="" />` : "◉"}</span>
+        <span class="profile-avatar" id="profile-banner-avatar">${mine.photoUrl ? `<img src="${escapeHtml(mine.photoUrl)}" alt="" />` : "◉"}</span>
         ${mine.status !== "inactive" ? `<span class="profile-online-dot" aria-hidden="true"></span>` : ""}
+        <button class="profile-photo-button" id="profile-photo-button" type="button" title="Upload profile image" aria-label="Upload profile image">📷</button>
+        <input id="profile-photo-input" type="file" accept="image/jpeg,image/png,image/webp" hidden />
       </div>
       <div class="profile-heading">
         <h1 class="profile-name">${escapeHtml(mine.name)}</h1>
@@ -389,6 +391,7 @@ export async function renderMyProfilePage(container, { email, uid, role, profile
         <div class="profile-stat-chip stat-ga"><strong>${goals + assists}</strong><span>G+A</span></div>
       </div>
     </div>
+    <p class="auth-error profile-photo-error" id="profile-photo-error" role="alert" hidden></p>
     <div class="profile-layout">
       <div class="profile-details-card">
         <h2>Player Details</h2>
@@ -418,6 +421,37 @@ export async function renderMyProfilePage(container, { email, uid, role, profile
 
   const tabButtons = Array.from(root.querySelectorAll("#profile-tabs .tab-button"));
   const tabContent = document.getElementById("profile-tab-content");
+  const profilePhotoButton = document.getElementById("profile-photo-button");
+  const profilePhotoInput = document.getElementById("profile-photo-input");
+  const profilePhotoError = document.getElementById("profile-photo-error");
+  profilePhotoButton.addEventListener("click", () => profilePhotoInput.click());
+  profilePhotoInput.addEventListener("change", () => {
+    const file = profilePhotoInput.files && profilePhotoInput.files[0];
+    if (!file) return;
+    profilePhotoError.hidden = true;
+    if (file.size > 700 * 1024) {
+      profilePhotoError.textContent = "Please choose an image smaller than 700 KB.";
+      profilePhotoError.hidden = false;
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = async () => {
+      const photoUrl = String(reader.result || "");
+      profilePhotoButton.disabled = true;
+      try {
+        await updatePlayer(mine.id, { photoUrl });
+        mine.photoUrl = photoUrl;
+        document.getElementById("profile-banner-avatar").innerHTML = `<img src="${escapeHtml(photoUrl)}" alt="" />`;
+      } catch (error) {
+        profilePhotoError.textContent = "Unable to upload your profile image. Please try again.";
+        profilePhotoError.hidden = false;
+        console.error("Unable to upload profile image", error);
+      } finally {
+        profilePhotoButton.disabled = false;
+      }
+    };
+    reader.readAsDataURL(file);
+  });
 
   function renderEditTab() {
     tabContent.innerHTML = `

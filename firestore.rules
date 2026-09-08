@@ -56,8 +56,8 @@ service cloud.firestore {
       allow update: if isStaff()
         || (isVerified()
             && resource.data.email == request.auth.token.email
-            && request.resource.data.status == resource.data.status
-            && request.resource.data.teamsId == resource.data.teamsId);
+            && !request.resource.data.diff(resource.data).affectedKeys()
+              .hasAny(['status', 'teamsId']));
       allow delete: if isStaff();
     }
 
