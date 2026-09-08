@@ -94,6 +94,14 @@ button, input, select, textarea { font-family: inherit; }
   background: var(--surface);
   box-shadow: var(--shadow);
 }
+.auth-card-wide { width: min(720px, 100%); }
+.onboarding-section-title {
+  margin: 6px 0 0;
+  padding-top: 18px;
+  border-top: 1px solid var(--border, rgba(0, 0, 0, .1));
+  font-size: 1rem;
+  letter-spacing: -.01em;
+}
 .auth-brand { display: flex; align-items: center; gap: 10px; margin-bottom: 22px; }
 .auth-brand-mark { display: block; width: 34px; height: 34px; object-fit: contain; }
 .auth-brand-title { font: 800 1.1rem var(--display); letter-spacing: .04em; }

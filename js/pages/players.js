@@ -33,7 +33,7 @@ export function positionOptionsHtml(selected) {
   }).join("");
 }
 
-function photoUploadHtml(player) {
+export function photoUploadHtml(player) {
   return `
     <div class="photo-upload-row">
       <span class="photo-avatar" id="player-photo-avatar">
@@ -89,7 +89,7 @@ export function playerFieldsHtml(player, { gridClass = "form-grid", includeAdmin
   `;
 }
 
-function wirePhotoUpload(form) {
+export function wirePhotoUpload(form) {
   const button = form.querySelector("#player-photo-button");
   const input = form.querySelector("#player-photo-input");
   const avatar = form.querySelector("#player-photo-avatar");
@@ -107,7 +107,7 @@ function wirePhotoUpload(form) {
   });
 }
 
-function readPlayerForm(form) {
+export function readPlayerForm(form) {
   const formData = new FormData(form);
   const payload = {};
   const setIfPresent = (key, transform) => {

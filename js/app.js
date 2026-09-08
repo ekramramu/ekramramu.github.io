@@ -1,7 +1,8 @@
-import { watchAuthState, getUserProfile, ensureUserProfile, logoutAccount } from "./auth.js";
+import { watchAuthState, getUserProfile, ensureUserProfile, logoutAccount, updateUserPreferences } from "./auth.js";
 import { ensurePlayerProfile } from "./data.js";
 import { renderShell } from "./layout.js";
 import { renderLogin, renderRegister, renderVerifyNotice, renderForgotPassword } from "./pages/authPages.js";
+import { needsProfileCompletion, renderCompleteProfilePage } from "./pages/completeProfile.js";
 import { renderDashboardPage } from "./pages/dashboard.js";
 import { renderRulesPage } from "./pages/rules.js";
 import { renderPlayersPage, renderNewPlayerPage, renderMyProfilePage, renderMonthlyProfilePage } from "./pages/players.js";
@@ -13,10 +14,13 @@ import { renderSettingsPage } from "./pages/settings.js";
 import { registerRoute, setNotFoundHandler, startRouter, navigate, getCurrentPath } from "./router.js";
 
 const appRoot = document.querySelector("#app");
-const PROTECTED_PATHS = ["/dashboard", "/rules", "/players", "/players/new", "/players/my-profile", "/players/monthly-profile", "/match-days", "/venues", "/tournament-2026", "/finance", "/settings"];
+const ONBOARDING_PATH = "/complete-profile";
+const PROTECTED_PATHS = ["/dashboard", ONBOARDING_PATH, "/rules", "/players", "/players/new", "/players/my-profile", "/players/monthly-profile", "/match-days", "/venues", "/tournament-2026", "/finance", "/settings"];
 
 let authState = { status: "loading" };
 let currentProfile = null;
+let currentPlayer = null;
+let onboardingRequired = false;
 
 function renderCurrentView() {
   const path = getCurrentPath();
@@ -47,7 +51,25 @@ function renderCurrentView() {
     return;
   }
 
-  if (path === "/login" || path === "/register" || !PROTECTED_PATHS.includes(path)) {
+  if (onboardingRequired) {
+    if (path !== ONBOARDING_PATH) {
+      navigate(ONBOARDING_PATH);
+      return;
+    }
+    renderCompleteProfilePage(appRoot, {
+      profile: currentProfile,
+      player: currentPlayer,
+      email: authState.user.email,
+      uid: authState.user.uid,
+      onComplete: () => {
+        onboardingRequired = false;
+        navigate("/dashboard");
+      }
+    });
+    return;
+  }
+
+  if (path === "/login" || path === "/register" || path === ONBOARDING_PATH || !PROTECTED_PATHS.includes(path)) {
     navigate("/dashboard");
     return;
   }
@@ -96,6 +118,8 @@ watchAuthState(async (user) => {
   if (!user) {
     authState = { status: "signed-out" };
     currentProfile = null;
+    currentPlayer = null;
+    onboardingRequired = false;
     renderCurrentView();
     return;
   }
@@ -120,13 +144,21 @@ watchAuthState(async (user) => {
     currentProfile = null;
   }
   try {
-    await ensurePlayerProfile({
+    currentPlayer = await ensurePlayerProfile({
       ...currentProfile,
       email: user.email,
       name: currentProfile?.name || user.displayName
     });
   } catch (error) {
     console.error("Unable to link player profile", error);
+    currentPlayer = null;
+  }
+  onboardingRequired = needsProfileCompletion(currentProfile, currentPlayer);
+  if (!onboardingRequired && currentProfile && !currentProfile.profileCompleted) {
+    // Back-fill the flag for accounts whose details were already on file.
+    updateUserPreferences(user.uid, { profileCompleted: true }).catch((error) => {
+      console.error("Unable to mark profile as complete", error);
+    });
   }
   renderCurrentView();
 });
