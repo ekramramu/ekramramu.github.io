@@ -115,7 +115,11 @@ watchAuthState(async (user) => {
     currentProfile = null;
   }
   try {
-    await ensurePlayerProfile({ email: user.email, name: currentProfile?.name || user.displayName });
+    await ensurePlayerProfile({
+      ...currentProfile,
+      email: user.email,
+      name: currentProfile?.name || user.displayName
+    });
   } catch (error) {
     console.error("Unable to link player profile", error);
   }

@@ -45,14 +45,23 @@ export async function updatePlayer(playerId, player) {
 
 // Self-heals a missing player record for the signed-in user (e.g. accounts
 // registered before this link existed), so nobody has to click a button.
-export async function ensurePlayerProfile({ email, name }) {
+export async function ensurePlayerProfile({ email, name, phone, position, jerseyNumber, photoUrl }) {
   const snapshot = await getDocs(query(collection(db, "players"), where("email", "==", email)));
   if (!snapshot.empty) {
     const existing = snapshot.docs[0];
     return { id: existing.id, ...existing.data() };
   }
-  const ref = await addPlayer({ name: name || email, email, status: "active" });
-  return { id: ref.id, name: name || email, email, status: "active" };
+  const player = {
+    name: name || email,
+    email,
+    phone: phone || "",
+    position: position || "",
+    jerseyNumber: jerseyNumber ?? null,
+    photoUrl: photoUrl || "",
+    status: "active"
+  };
+  const ref = await addPlayer(player);
+  return { id: ref.id, ...player };
 }
 
 export async function deletePlayer(playerId) {

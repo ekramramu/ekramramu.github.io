@@ -137,7 +137,7 @@ export function renderRegister(appRoot) {
           status: "active"
         });
       } catch (playerError) {
-        // Non-fatal: the "Create my player profile" fallback on My Player Profile covers this.
+        // Non-fatal: My Player Profile retries creation automatically on the next visit.
         console.error("Unable to create linked player profile", playerError);
       }
       // onAuthStateChanged in app.js drives the redirect to the verify-notice screen

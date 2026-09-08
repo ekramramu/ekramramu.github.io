@@ -1,4 +1,4 @@
-import { addPlayer, deletePlayer, listMatchDays, listMatchResponses, listPlayers, updatePlayer } from "../data.js";
+import { addPlayer, deletePlayer, ensurePlayerProfile, listMatchDays, listMatchResponses, listPlayers, updatePlayer } from "../data.js";
 import { escapeHtml, formatDate, friendlyAuthError } from "../utils.js";
 import { changePassword, updateUserPreferences } from "../auth.js";
 import { navigate } from "../router.js";
@@ -352,27 +352,13 @@ export async function renderMyProfilePage(container, { email, uid, role, profile
   }
 
   if (!mine) {
-    root.innerHTML = `
-      <p class="empty-state">No player profile is linked to your account (${escapeHtml(email || "")}) yet.</p>
-      <button class="btn btn-success" id="create-my-profile-button" type="button">Create my player profile</button>
-      <p class="auth-error" id="create-my-profile-error" role="alert" hidden></p>
-    `;
-    document.getElementById("create-my-profile-button").addEventListener("click", async (event) => {
-      const button = event.currentTarget;
-      const errorEl = document.getElementById("create-my-profile-error");
-      errorEl.hidden = true;
-      button.disabled = true;
-      try {
-        await addPlayer({ name: profile?.name || email, email, status: "active" });
-        await renderMyProfilePage(container, { email, uid, role, profile });
-      } catch (error) {
-        errorEl.textContent = "Unable to create your player profile. Please try again, or ask a club admin for help.";
-        errorEl.hidden = false;
-        button.disabled = false;
-        console.error("Unable to create my player profile", error);
-      }
-    });
-    return;
+    try {
+      mine = await ensurePlayerProfile({ ...profile, email, name: profile?.name || email });
+    } catch (error) {
+      root.innerHTML = `<p class="empty-state">Unable to load your profile.</p>`;
+      console.error("Unable to create my player profile", error);
+      return;
+    }
   }
 
   const matchesPlayed = await countMatchesPlayed(uid).catch(() => 0);
