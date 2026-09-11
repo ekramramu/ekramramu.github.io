@@ -441,7 +441,12 @@ button, input, select, textarea { font-family: inherit; }
 .player-directory-body h2 { overflow: hidden; margin: 0; font-size: 1rem; text-overflow: ellipsis; white-space: nowrap; }
 .player-directory-body p { margin: 5px 0 12px; color: var(--muted); font-size: .78rem; }
 .player-card-rating { margin-left: 6px; color: var(--muted); font: 600 .65rem var(--mono); }
+.player-card-facts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 14px 0 0; }
+.player-card-facts div { padding-top: 9px; border-top: 1px solid var(--line); }
+.player-card-facts dt { color: var(--muted); font: 600 .6rem var(--mono); text-transform: uppercase; }
+.player-card-facts dd { margin: 3px 0 0; font-size: .74rem; font-weight: 600; }
 .player-card-actions { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 16px; }
+.player-detail-page { padding: 28px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
 .player-detail-hero { display: flex; align-items: center; gap: 18px; padding: 4px 0 20px; border-bottom: 1px solid var(--line); }
 .player-detail-photo { width: 88px; height: 88px; flex: 0 0 88px; border-radius: 50%; font-size: 2rem; }
 .player-detail-hero h1 { margin: 0; font-size: 1.35rem; }
@@ -543,6 +548,7 @@ button, input, select, textarea { font-family: inherit; }
   .player-directory { grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 12px; }
   .player-directory-card { grid-template-rows: 200px auto auto; }
   .player-directory-photo { height: 200px; }
+  .player-detail-page { padding: 20px; }
   .player-detail-grid { grid-template-columns: 1fr; }
   .detail-list div { grid-template-columns: 1fr; gap: 5px; }
   .modal-overlay { padding: 12px; }

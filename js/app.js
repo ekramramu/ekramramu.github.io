@@ -5,7 +5,7 @@ import { renderLogin, renderVerifyNotice, renderForgotPassword } from "./pages/a
 import { needsProfileCompletion, renderCompleteProfilePage } from "./pages/completeProfile.js";
 import { renderDashboardPage } from "./pages/dashboard.js";
 import { renderRulesPage } from "./pages/rules.js";
-import { renderPlayersPage, renderNewPlayerPage, renderMyProfilePage, renderMonthlyProfilePage } from "./pages/players.js";
+import { renderPlayerDetailsPage, renderPlayersPage, renderNewPlayerPage, renderMyProfilePage, renderMonthlyProfilePage } from "./pages/players.js";
 import { renderCollectionsPage, renderBillPaymentsPage } from "./pages/finance.js";
 import { renderTournamentListPage, renderTournamentManagePage } from "./pages/tournament.js";
 import { renderMatchDaysPage } from "./pages/matchDays.js";
@@ -15,7 +15,7 @@ import { registerRoute, setNotFoundHandler, startRouter, navigate, getCurrentPat
 
 const appRoot = document.querySelector("#app");
 const ONBOARDING_PATH = "/complete-profile";
-const PROTECTED_PATHS = ["/dashboard", ONBOARDING_PATH, "/rules", "/players", "/players/new", "/players/my-profile", "/players/monthly-profile", "/match-days", "/venues", "/tournament-2026", "/tournaments", "/tournaments/manage", "/finance", "/finance/collections", "/finance/bill-payments", "/settings"];
+const PROTECTED_PATHS = ["/dashboard", ONBOARDING_PATH, "/rules", "/players", "/players/new", "/players/detail", "/players/my-profile", "/players/monthly-profile", "/match-days", "/venues", "/tournament-2026", "/tournaments", "/tournaments/manage", "/finance", "/finance/collections", "/finance/bill-payments", "/settings"];
 
 let authState = { status: "loading" };
 let currentProfile = null;
@@ -92,6 +92,8 @@ function renderCurrentView() {
       return;
     }
     renderNewPlayerPage(content, pageContext);
+  } else if (path === "/players/detail") {
+    renderPlayerDetailsPage(content);
   } else if (path === "/players/my-profile") {
     renderMyProfilePage(content, pageContext);
   } else if (path === "/players/monthly-profile") {

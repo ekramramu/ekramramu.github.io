@@ -14,6 +14,7 @@ const NAV_ITEMS = [
   {
     label: "Player",
     icon: "assets/player.png",
+    activePaths: ["/players/detail"],
     children: [
       { path: "/players", label: "Player List" },
       { path: "/players/my-profile", label: "My Player Profile" },
@@ -35,7 +36,7 @@ const NAV_ITEMS = [
 export function renderShell(appRoot, { activePath, profile, email }) {
   const navHtml = NAV_ITEMS.map((item) => {
     if (item.children) {
-      const groupActive = item.children.some((child) => child.path === activePath);
+      const groupActive = item.children.some((child) => child.path === activePath) || (item.activePaths || []).includes(activePath);
       const childLinks = item.children.map((child) => `
         <a class="app-nav-link app-nav-sublink${activePath === child.path ? " active" : ""}" href="#${child.path}">
           <span>${child.label}</span>

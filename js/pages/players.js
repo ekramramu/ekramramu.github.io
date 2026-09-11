@@ -1,5 +1,4 @@
 import { addPlayer, deletePlayer, listMatchDays, listMatchResponses, listPlayers, listTournamentFixtures, listTournamentTeams, listTournaments, listUserProfiles, revokePortalAccessByEmail, updatePlayer, updateUserRole } from "../data.js";
-import { closeModal, openModal } from "../modal.js";
 import { escapeHtml, formatDate, friendlyAuthError } from "../utils.js";
 import { changePassword, updateUserPreferences } from "../auth.js";
 import { navigate } from "../router.js";
@@ -166,7 +165,8 @@ function playerFormHtml(player = {}) {
 
 function playerCard(player, canManage, canDelete, userProfile, canChangeRole) {
   const photo = player.photoUrl ? `<img src="${escapeHtml(player.photoUrl)}" alt="" />` : `<span>${escapeHtml((player.name || "?").slice(0, 1))}</span>`;
-  return `<article class="player-directory-card" data-id="${escapeHtml(player.id)}" tabindex="0" role="button"><div class="player-directory-photo">${photo}</div><div class="player-directory-body"><h2>${escapeHtml(player.name)}</h2><p>${escapeHtml(player.position || "Unassigned")} · Jersey #${escapeHtml(player.jerseyNumber ?? "-")}</p><div><span class="badge badge-${player.status === "inactive" ? "inactive" : "active"}">${player.status === "inactive" ? "Inactive" : "Active"}</span><span class="player-card-rating">${player.rating == null ? "No rating" : `${Number(player.rating).toFixed(1)} rating`}</span></div></div>${canManage ? `<div class="player-card-actions" onclick="event.stopPropagation()"><button class="btn btn-secondary btn-small" data-action="edit" type="button">Edit</button>${canChangeRole && userProfile && !userProfile.disabled ? `<button class="btn btn-secondary btn-small" data-action="role" type="button">${userProfile.role === "moderator" ? "Remove moderator" : "Make moderator"}</button>` : ""}${canDelete ? `<button class="btn btn-danger btn-small" data-action="delete" type="button">Delete</button>` : ""}</div>` : ""}</article>`;
+  const joined = player.joinedAt ? timestampDate(player.joinedAt) : timestampDate(player.createdAt);
+  return `<article class="player-directory-card" data-id="${escapeHtml(player.id)}" tabindex="0" role="link"><div class="player-directory-photo">${photo}</div><div class="player-directory-body"><h2>${escapeHtml(player.name)}</h2><p>${escapeHtml(player.position || "Unassigned")} · Jersey #${escapeHtml(player.jerseyNumber ?? "-")}</p><div><span class="badge badge-${player.status === "inactive" ? "inactive" : "active"}">${player.status === "inactive" ? "Inactive" : "Active"}</span><span class="player-card-rating">${player.rating == null ? "No rating" : `${Number(player.rating).toFixed(1)} rating`}</span></div><dl class="player-card-facts"><div><dt>Joined</dt><dd>${escapeHtml(joined ? formatDate(joined) : "Not recorded")}</dd></div><div><dt>Total Goals</dt><dd>${escapeHtml(player.goals ?? 0)}</dd></div></dl></div>${canManage ? `<div class="player-card-actions" onclick="event.stopPropagation()"><button class="btn btn-secondary btn-small" data-action="edit" type="button">Edit</button>${canChangeRole && userProfile && !userProfile.disabled ? `<button class="btn btn-secondary btn-small" data-action="role" type="button">${userProfile.role === "moderator" ? "Remove moderator" : "Make moderator"}</button>` : ""}${canDelete ? `<button class="btn btn-danger btn-small" data-action="delete" type="button">Delete</button>` : ""}</div>` : ""}</article>`;
 }
 
 function timestampDate(value) {
@@ -206,7 +206,22 @@ function playerDetailsHtml(player, stats) {
   const years = joined ? Math.max(0, new Date().getFullYear() - joined.getFullYear()) : null;
   const photo = player.photoUrl ? `<img src="${escapeHtml(player.photoUrl)}" alt="" />` : `<span>${escapeHtml((player.name || "?").slice(0, 1))}</span>`;
   const detail = (label, value) => `<div><span>${label}</span><strong>${escapeHtml(value)}</strong></div>`;
-  return `<div class="modal-header"><h2>Player Profile</h2><button class="icon-button" data-close-modal type="button" aria-label="Close">✕</button></div><div class="player-detail-hero"><div class="player-detail-photo">${photo}</div><div><h1>${escapeHtml(player.name)}</h1><p>${escapeHtml(player.position || "Unassigned")} · Jersey #${escapeHtml(player.jerseyNumber ?? "-")}</p></div></div><div class="player-detail-grid">${detail("Joined Club", joined ? formatDate(joined) : "Not recorded")}${detail("Playing Years", years == null ? "Not recorded" : `${years} year${years === 1 ? "" : "s"}`)}${detail("Height", player.heightCm ? `${player.heightCm} cm` : "Not recorded")}${detail("Weight", player.weightKg ? `${player.weightKg} kg` : "Not recorded")}${detail("Fitness", player.fitnessStatus || "Not recorded")}${detail("Club Rating", player.rating == null ? "Not rated" : `${Number(player.rating).toFixed(1)} / 10`)}${detail("Rating Rank", stats.rank ? `Top ${stats.percentile}% (#${stats.rank})` : "Not ranked")}${detail("Tournaments", String(stats.attended))}${detail("Total Goals", String(stats.goals))}${detail("Total Assists", String(stats.assists))}${detail("Match Record", `${stats.wins} W · ${stats.losses} L · ${stats.draws} D`)}</div><section class="player-game-history"><h2>Game History</h2><div class="table-wrap"><table class="data-table"><thead><tr><th>Tournament</th><th>Fixture</th><th>Result</th><th>Minutes</th><th>Shots</th><th>Rating</th></tr></thead><tbody>${stats.history.map((game) => `<tr><td>${escapeHtml(game.tournament)}</td><td>${escapeHtml(game.fixture)}</td><td>${escapeHtml(game.result)}</td><td>-</td><td>-</td><td>-</td></tr>`).join("") || `<tr><td colspan="6" class="empty-state">No completed tournament matches recorded.</td></tr>`}</tbody></table></div></section>`;
+  return `<div class="player-detail-hero"><div class="player-detail-photo">${photo}</div><div><h1>${escapeHtml(player.name)}</h1><p>${escapeHtml(player.position || "Unassigned")} · Jersey #${escapeHtml(player.jerseyNumber ?? "-")}</p></div></div><div class="player-detail-grid">${detail("Joined Club", joined ? formatDate(joined) : "Not recorded")}${detail("Playing Years", years == null ? "Not recorded" : `${years} year${years === 1 ? "" : "s"}`)}${detail("Height", player.heightCm ? `${player.heightCm} cm` : "Not recorded")}${detail("Weight", player.weightKg ? `${player.weightKg} kg` : "Not recorded")}${detail("Fitness", player.fitnessStatus || "Not recorded")}${detail("Club Rating", player.rating == null ? "Not rated" : `${Number(player.rating).toFixed(1)} / 10`)}${detail("Rating Rank", stats.rank ? `Top ${stats.percentile}% (#${stats.rank})` : "Not ranked")}${detail("Tournaments", String(stats.attended))}${detail("Total Goals", String(stats.goals))}${detail("Total Assists", String(stats.assists))}${detail("Match Record", `${stats.wins} W · ${stats.losses} L · ${stats.draws} D`)}</div><section class="player-game-history"><h2>Game History</h2><div class="table-wrap"><table class="data-table"><thead><tr><th>Tournament</th><th>Fixture</th><th>Result</th><th>Minutes</th><th>Shots</th><th>Rating</th></tr></thead><tbody>${stats.history.map((game) => `<tr><td>${escapeHtml(game.tournament)}</td><td>${escapeHtml(game.fixture)}</td><td>${escapeHtml(game.result)}</td><td>-</td><td>-</td><td>-</td></tr>`).join("") || `<tr><td colspan="6" class="empty-state">No completed tournament matches recorded.</td></tr>`}</tbody></table></div></section>`;
+}
+
+export async function renderPlayerDetailsPage(container) {
+  const playerId = decodeURIComponent(window.location.hash.replace(/^#\/players\/detail\//, "").split("?")[0]);
+  container.innerHTML = `<div class="breadcrumb"><a href="#/players">Players</a><span>/</span><span class="breadcrumb-current">Player Profile</span></div><div class="player-detail-page"><p class="empty-state">Loading player profile…</p></div>`;
+  const page = container.querySelector(".player-detail-page");
+  try {
+    const players = await listPlayers();
+    const player = players.find((item) => item.id === playerId);
+    if (!player) throw new Error("Player not found");
+    page.innerHTML = playerDetailsHtml(player, await playerTournamentStats(player, players));
+  } catch (error) {
+    page.innerHTML = `<div class="tournament-empty"><h2>Player profile unavailable</h2><p>This player may have been removed.</p><a class="btn btn-secondary" href="#/players">Back to Players</a></div>`;
+    console.error("Unable to load player details", error);
+  }
 }
 
 export async function renderPlayersPage(container, { role, email }) {
@@ -249,7 +264,6 @@ export async function renderPlayersPage(container, { role, email }) {
   }
 
   function wireRowActions(players, profilesByEmail) {
-    if (!canManage) return;
     directory.querySelectorAll("[data-id]").forEach((row) => {
       const id = row.dataset.id;
       const player = players.find((item) => item.id === id);
@@ -271,18 +285,7 @@ export async function renderPlayersPage(container, { role, email }) {
           console.error("Unable to delete player", error);
         }
       });
-      const openDetails = async () => {
-        const overlay = openModal(`<p class="empty-state">Loading ${escapeHtml(player.name)}'s profile…</p>`);
-        overlay.querySelector(".modal-card").classList.add("modal-card-wide");
-        try {
-          overlay.querySelector(".modal-card").innerHTML = playerDetailsHtml(player, await playerTournamentStats(player, players));
-          overlay.querySelectorAll("[data-close-modal]").forEach((button) => button.addEventListener("click", closeModal));
-        } catch (error) {
-          overlay.querySelector(".modal-card").innerHTML = `<div class="modal-header"><h2>Player Profile</h2><button class="icon-button" data-close-modal type="button" aria-label="Close">✕</button></div><p class="empty-state">Unable to load this player's tournament history.</p>`;
-          overlay.querySelector("[data-close-modal]").addEventListener("click", closeModal);
-          console.error("Unable to load player details", error);
-        }
-      };
+      const openDetails = () => navigate(`/players/detail/${encodeURIComponent(player.id)}`);
       row.addEventListener("click", openDetails);
       row.addEventListener("keydown", (event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); openDetails(); } });
     });

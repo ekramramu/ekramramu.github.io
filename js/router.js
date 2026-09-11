@@ -21,7 +21,9 @@ export function navigate(path) {
 export function getCurrentPath() {
   const hash = window.location.hash.replace(/^#/, "");
   const path = hash.split("?")[0] || "/dashboard";
-  return path.startsWith("/tournaments/manage/") ? "/tournaments/manage" : path;
+  if (path.startsWith("/tournaments/manage/")) return "/tournaments/manage";
+  if (path.startsWith("/players/detail/")) return "/players/detail";
+  return path;
 }
 
 function handleRouteChange() {
