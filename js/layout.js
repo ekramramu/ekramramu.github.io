@@ -77,14 +77,7 @@ export function renderShell(appRoot, { activePath, profile, email }) {
       <main class="app-main">
         <header class="app-topbar">
           <button class="icon-button menu-button" type="button" aria-label="Toggle menu" title="Toggle menu" aria-expanded="true" aria-controls="app-sidebar">☰</button>
-          <span class="topbar-mark" aria-hidden="true">◷</span>
-          <label class="search-box">
-            <span aria-hidden="true">⌕</span>
-            <input type="search" placeholder="Search players, match days, venues..." aria-label="Search" />
-          </label>
           <div class="topbar-actions">
-            <button class="icon-button" type="button" aria-label="Toggle theme" title="Toggle theme">◐</button>
-            <button class="icon-button notification-button" type="button" aria-label="Notifications" title="Notifications">♧<span>7</span></button>
             <div class="topbar-account">
               <button class="topbar-user" id="account-menu-button" type="button" aria-expanded="false" aria-controls="account-menu">
                 <span class="topbar-avatar" aria-hidden="true">◉</span>
