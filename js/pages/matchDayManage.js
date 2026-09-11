@@ -1,6 +1,6 @@
 import {
   addMatchDayFixture, addMatchDayTeam, deleteMatchDayFixture, deleteMatchDayTeam,
-  listMatchDayFixtures, listMatchDayTeams, listMatchDays, listMatchResponses, listPlayers,
+  listMatchDayFixtures, listMatchDayTeams, listMatchDays, listMatchResponses, listPlayers, listVenues,
   updateMatchDay, updateMatchDayFixture, updateMatchDayTeam
 } from "../data.js";
 import { closeModal, openModal } from "../modal.js";
@@ -44,8 +44,12 @@ function detailHeader(match, staff, canDelete) {
   return `<div class="breadcrumb"><a href="#/match-days">Match Days</a><span>/</span><span class="breadcrumb-current">${escapeHtml(match.title || "Match day")}</span></div><div class="page-header"><div><span class="eyebrow">Match day workspace</span><h1 class="page-title">${escapeHtml(match.title || "Match day")}</h1><p class="page-subtitle">${formatDate(match.date)} · ${escapeHtml(match.startTime || "Time TBC")} · ${escapeHtml(match.venueName || "Venue TBC")}</p></div><div class="tournament-heading-actions"><span class="badge badge-${badge}">${escapeHtml(status)}</span>${staff ? `<button class="btn btn-secondary btn-small" id="edit-match" type="button">Edit Match</button>` : ""}${canDelete ? `<a class="btn btn-danger btn-small" href="#/match-days">Back to Match Days</a>` : ""}</div></div>`;
 }
 
+function matchEditForm(match, venues) {
+  return `<div class="modal-header"><h2>Edit Match Day</h2><button class="icon-button" data-close-modal type="button" aria-label="Close">✕</button></div><form id="workspace-match-form"><div class="form-grid"><label class="form-field form-field-wide"><span>Match Day Name</span><input name="title" value="${escapeHtml(match.title || "")}" required /></label><label class="form-field"><span>Date</span><input type="date" name="date" value="${escapeHtml(match.date || "")}" required /></label><label class="form-field"><span>Start Time</span><input type="time" name="startTime" value="${escapeHtml(match.startTime || "")}" required /></label><label class="form-field"><span>End Time</span><input type="time" name="endTime" value="${escapeHtml(match.endTime || "")}" /></label><label class="form-field form-field-wide"><span>Venue</span><select name="venueId"><option value="">Select venue</option>${venues.map((venue) => `<option value="${escapeHtml(venue.id)}" ${venue.id === match.venueId ? "selected" : ""}>${escapeHtml(venue.name)}</option>`).join("")}</select></label></div><p class="auth-error" role="alert" hidden></p><div class="auth-actions modal-actions"><button class="btn btn-secondary" data-close-modal type="button">Cancel</button><button class="btn btn-primary" type="submit">Save Match</button></div></form>`;
+}
+
 function overview(state) {
-  const confirmed = state.responses.filter((response) => response.response === "in" && response.playerId).length;
+  const confirmed = state.responses.filter((response) => response.response === "in").length;
   const results = state.fixtures.filter((fixture) => fixture.homeScore != null && fixture.awayScore != null);
   return `<div class="tournament-summary-grid"><div><span>Date</span><strong>${formatDate(state.match.date)}</strong></div><div><span>Venue</span><strong>${escapeHtml(state.match.venueName || "TBC")}</strong></div><div><span>Confirmed</span><strong>${confirmed}</strong></div><div><span>Teams</span><strong>${state.teams.length}</strong></div><div><span>Fixtures</span><strong>${state.fixtures.length}</strong></div></div><div class="tournament-overview-grid"><section class="tournament-section"><h2>Match Information</h2><dl class="detail-list"><div><dt>Start Time</dt><dd>${escapeHtml(state.match.startTime || "Not set")}</dd></div><div><dt>End Time</dt><dd>${escapeHtml(state.match.endTime || "Not set")}</dd></div><div><dt>Venue</dt><dd>${escapeHtml(state.match.venueName || "Not set")}</dd></div><div><dt>Result</dt><dd>${escapeHtml(state.match.result || "Not recorded")}</dd></div></dl></section><section class="tournament-section"><h2>Confirmed Players</h2><div class="roster-chip-list">${state.roster.map((player) => `<span>${escapeHtml(player.name)}<small>${escapeHtml(player.position || "Unassigned")}</small></span>`).join("") || `<p class="empty-state">No player RSVPs are linked yet.</p>`}</div></section></div><section class="tournament-section"><h2>Fixture Results</h2><ul class="result-summary-list">${results.map((fixture) => `<li><strong>${escapeHtml(fixture.homeTeamName)} ${fixture.homeScore} - ${fixture.awayScore} ${escapeHtml(fixture.awayTeamName)}</strong><span>${fixture.manOfTheMatchId ? `Man of the Match: ${escapeHtml(nameFor(fixture.manOfTheMatchId, state.players))}` : "Result recorded"}</span></li>`).join("") || `<li class="drop-hint">No fixture results recorded yet.</li>`}</ul></section>`;
 }
@@ -98,7 +102,8 @@ export async function renderMatchDayManagePage(container, { role }) {
       if (!match) throw new Error("Match Day not found");
       const [players, responses, teams, fixtures] = await Promise.all([listPlayers(), listMatchResponses(matchId), listMatchDayTeams(matchId), listMatchDayFixtures(matchId)]);
       const rosterIds = new Set(responses.filter((response) => response.response === "in" && response.playerId).map((response) => response.playerId));
-      state = { match, players, responses, roster: players.filter((player) => rosterIds.has(player.id)), teams, fixtures };
+      const roster = rosterIds.size ? players.filter((player) => rosterIds.has(player.id)) : players.filter((player) => player.status !== "inactive");
+      state = { match, players, responses, roster, teams, fixtures };
       render();
     } catch (error) {
       container.innerHTML = `<div class="tournament-empty"><h2>Match Day unavailable</h2><p>It may have been removed or you may not have access.</p><a class="btn btn-secondary" href="#/match-days">Back to Match Days</a></div>`;
@@ -121,6 +126,18 @@ export async function renderMatchDayManagePage(container, { role }) {
       const playerIds = selected(event.currentTarget, "playerIds");
       if (!name || !playerIds.length) return showError(overlay, "Team name and at least one confirmed player are required.");
       try { if (team.id) await updateMatchDayTeam(matchId, team.id, { name, playerIds }); else await addMatchDayTeam(matchId, { name, playerIds }); closeModal(); await refresh(); } catch (error) { showError(overlay, "Unable to save team."); console.error(error); }
+    });
+  }
+
+  async function openMatchEditor() {
+    const venues = (await listVenues()).filter((venue) => venue.status !== "inactive");
+    const overlay = showModal(matchEditForm(state.match, venues));
+    overlay.querySelector("#workspace-match-form").addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const data = new FormData(event.currentTarget), venueId = String(data.get("venueId") || ""), venue = venues.find((item) => item.id === venueId);
+      const payload = { title: String(data.get("title") || "").trim(), date: String(data.get("date") || ""), startTime: String(data.get("startTime") || ""), endTime: String(data.get("endTime") || ""), venueId: venueId || null, venueName: venue?.name || "", venueAddress: venue?.address || "" };
+      if (!payload.title || !payload.date || !payload.startTime) return showError(overlay, "Name, date, and start time are required.");
+      try { await updateMatchDay(matchId, payload); closeModal(); await refresh(); } catch (error) { showError(overlay, "Unable to save Match Day."); console.error(error); }
     });
   }
 
@@ -157,7 +174,7 @@ export async function renderMatchDayManagePage(container, { role }) {
 
   function wire() {
     container.querySelectorAll("[data-tab]").forEach((button) => button.addEventListener("click", () => { tab = button.dataset.tab; render(); }));
-    container.querySelector("#edit-match")?.addEventListener("click", () => navigate("/match-days"));
+    container.querySelector("#edit-match")?.addEventListener("click", () => openMatchEditor().catch((error) => console.error("Unable to open Match Day editor", error)));
     container.querySelector("#add-team")?.addEventListener("click", () => openTeam());
     container.querySelector("#add-fixture")?.addEventListener("click", () => openFixture());
     container.querySelectorAll("[data-edit-team]").forEach((button) => button.addEventListener("click", () => openTeam(state.teams.find((team) => team.id === button.closest("[data-id]").dataset.id))));
