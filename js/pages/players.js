@@ -431,6 +431,11 @@ export async function renderMyProfilePage(container, { email, uid, role, profile
   const matchesPlayed = await countMatchesPlayed(uid).catch(() => 0);
   const goals = mine.goals || 0;
   const assists = mine.assists || 0;
+  const joined = mine.joinedAt ? timestampDate(mine.joinedAt) : timestampDate(mine.createdAt);
+  const playingYears = joined ? Math.max(0, new Date().getFullYear() - joined.getFullYear()) : null;
+  const ratedPlayers = players.filter((player) => player.rating != null).sort((a, b) => Number(b.rating) - Number(a.rating));
+  const ratingRank = ratedPlayers.findIndex((player) => player.id === mine.id) + 1;
+  const ratingPercentile = ratingRank ? Math.ceil((ratingRank / ratedPlayers.length) * 100) : 0;
   const staffPillHtml = role === "admin" ? `<span class="pill pill-outline">Admin</span> ` : role === "moderator" ? `<span class="pill pill-outline">Moderator</span> ` : "";
 
   root.innerHTML = `
@@ -464,12 +469,18 @@ export async function renderMyProfilePage(container, { email, uid, role, profile
         ${profileDetailRow("☎", "Mobile", escapeHtml(mine.phone || "—"))}
         ${profileDetailRow("◍", "Teams", escapeHtml(mine.teamsId || "—"))}
         ${profileDetailRow("#", "Jersey Number", escapeHtml(mine.jerseyNumber ?? "—"))}
+        ${profileDetailRow("⌚", "Joined Club", escapeHtml(joined ? formatDate(joined) : "Not recorded"))}
+        ${profileDetailRow("◷", "Playing Years", escapeHtml(playingYears == null ? "Not recorded" : `${playingYears} year${playingYears === 1 ? "" : "s"}`))}
+        ${profileDetailRow("↕", "Height", escapeHtml(mine.heightCm ? `${mine.heightCm} cm` : "Not recorded"))}
+        ${profileDetailRow("◒", "Weight", escapeHtml(mine.weightKg ? `${mine.weightKg} kg` : "Not recorded"))}
+        ${profileDetailRow("♥", "Fitness", escapeHtml(mine.fitnessStatus || "Not recorded"))}
         ${profileDetailRow("✓", "Status", mine.status === "inactive" ? "Inactive" : "Active")}
         ${profileDetailRow("⛨", "Roles", `${staffPillHtml}<span class="pill pill-outline">Player</span>`)}
         <div class="profile-rating-block">
           <span class="stat-label">Performance Rating</span>
           <span><strong>${mine.rating == null ? "—" : Number(mine.rating).toFixed(1)}</strong> <span class="profile-stars">${starRatingHtml(mine.rating)}</span></span>
         </div>
+        ${profileDetailRow("★", "Club Rating Rank", escapeHtml(ratingRank ? `Top ${ratingPercentile}% (#${ratingRank})` : "Not ranked"))}
         <div class="profile-disciplinary">
           <div class="yellow-cards"><strong>${mine.yellowCards || 0}</strong><span>Yellow Cards</span></div>
           <div class="red-cards"><strong>${mine.redCards || 0}</strong><span>Red Cards</span></div>
