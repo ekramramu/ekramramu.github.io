@@ -96,7 +96,7 @@ export function renderShell(appRoot, { activePath, profile, email }) {
                   <span>${escapeHtml(email || "")}</span>
                   <span class="badge badge-${role.toLowerCase()}">${role}</span>
                 </div>
-                <a href="#/players/my-profile">Edit profile</a>
+                <a href="#/settings">Edit profile</a>
                 <button id="logout-button" type="button">Log out</button>
               </div>
             </div>
