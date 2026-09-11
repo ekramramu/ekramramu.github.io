@@ -1,4 +1,5 @@
-import { addPlayer, deletePlayer, listMatchDays, listMatchResponses, listPlayers, listUserProfiles, revokePortalAccessByEmail, updatePlayer, updateUserRole } from "../data.js";
+import { addPlayer, deletePlayer, listMatchDays, listMatchResponses, listPlayers, listTournamentFixtures, listTournamentTeams, listTournaments, listUserProfiles, revokePortalAccessByEmail, updatePlayer, updateUserRole } from "../data.js";
+import { closeModal, openModal } from "../modal.js";
 import { escapeHtml, formatDate, friendlyAuthError } from "../utils.js";
 import { changePassword, updateUserPreferences } from "../auth.js";
 import { navigate } from "../router.js";
@@ -73,6 +74,24 @@ export function playerFieldsHtml(player, { gridClass = "form-grid", includeAdmin
         <span>Jersey Number</span>
         <input type="number" name="jerseyNumber" min="0" placeholder="e.g. 7" value="${escapeHtml(player.jerseyNumber ?? "")}" />
       </label>
+      <label class="form-field">
+        <span>Join Date</span>
+        <input type="date" name="joinedAt" value="${escapeHtml(player.joinedAt || "")}" />
+      </label>
+      <label class="form-field">
+        <span>Height (cm)</span>
+        <input type="number" name="heightCm" min="1" value="${escapeHtml(player.heightCm ?? "")}" />
+      </label>
+      <label class="form-field">
+        <span>Weight (kg)</span>
+        <input type="number" name="weightKg" min="1" step="0.1" value="${escapeHtml(player.weightKg ?? "")}" />
+      </label>
+      <label class="form-field">
+        <span>Fitness Status</span>
+        <select name="fitnessStatus">
+          ${["Fit", "Injured", "Recovering", "Unavailable"].map((status) => `<option value="${status}" ${player.fitnessStatus === status ? "selected" : ""}>${status}</option>`).join("")}
+        </select>
+      </label>
       ${includeAdminFields ? `
         <label class="form-field">
           <span>Teams ID</span>
@@ -121,6 +140,10 @@ export function readPlayerForm(form) {
   setIfPresent("phone", (v) => String(v || "").trim());
   setIfPresent("position", (v) => String(v || "").trim());
   setIfPresent("jerseyNumber", (v) => (v ? Number(v) : null));
+  setIfPresent("joinedAt", (v) => String(v || ""));
+  setIfPresent("heightCm", (v) => (v ? Number(v) : null));
+  setIfPresent("weightKg", (v) => (v ? Number(v) : null));
+  setIfPresent("fitnessStatus", (v) => String(v || "Fit"));
   setIfPresent("status", (v) => String(v || "active"));
   setIfPresent("photoUrl", (v) => String(v || ""));
   return payload;
@@ -141,6 +164,51 @@ function playerFormHtml(player = {}) {
   `;
 }
 
+function playerCard(player, userProfile, canManage, canDelete, canChangeRole) {
+  const photo = player.photoUrl ? `<img src="${escapeHtml(player.photoUrl)}" alt="" />` : `<span>${escapeHtml((player.name || "?").slice(0, 1))}</span>`;
+  return `<article class="player-directory-card" data-id="${escapeHtml(player.id)}" tabindex="0" role="button"><div class="player-directory-photo">${photo}</div><div class="player-directory-body"><h2>${escapeHtml(player.name)}</h2><p>${escapeHtml(player.position || "Unassigned")} · #${escapeHtml(player.jerseyNumber ?? "-")}</p><div><span class="badge badge-${player.status === "inactive" ? "inactive" : "active"}">${player.status === "inactive" ? "Inactive" : "Active"}</span><span class="player-card-rating">${player.rating == null ? "No rating" : `${Number(player.rating).toFixed(1)} rating`}</span></div></div>${canManage ? `<div class="player-card-actions" onclick="event.stopPropagation()"><button class="btn btn-secondary btn-small" data-action="edit" type="button">Edit</button>${canChangeRole && userProfile && !userProfile.disabled ? `<button class="btn btn-secondary btn-small" data-action="role" type="button">${userProfile.role === "moderator" ? "Remove moderator" : "Make moderator"}</button>` : ""}${canDelete ? `<button class="btn btn-danger btn-small" data-action="delete" type="button">Delete</button>` : ""}</div>` : ""}</article>`;
+}
+
+function timestampDate(value) {
+  return value?.toDate ? value.toDate() : value ? new Date(value) : null;
+}
+
+async function playerTournamentStats(player, allPlayers) {
+  const tournaments = await listTournaments();
+  const attended = tournaments.filter((tournament) => (tournament.playerIds || []).includes(player.id));
+  const details = await Promise.all(attended.map(async (tournament) => {
+    const [teams, fixtures] = await Promise.all([listTournamentTeams(tournament.id), listTournamentFixtures(tournament.id)]);
+    return { tournament, team: teams.find((team) => (team.playerIds || []).includes(player.id)), fixtures };
+  }));
+  let goals = 0, assists = 0, wins = 0, losses = 0, draws = 0;
+  const history = [];
+  details.forEach(({ tournament, team, fixtures }) => {
+    fixtures.forEach((fixture) => {
+      (fixture.goals || []).forEach((goal) => { if (goal.scorerId === player.id) goals += 1; if (goal.assistId === player.id) assists += 1; });
+      if (!team || fixture.homeScore == null || fixture.awayScore == null) return;
+      const home = fixture.homeTeamId === team.id;
+      const mine = home ? Number(fixture.homeScore) : Number(fixture.awayScore);
+      const other = home ? Number(fixture.awayScore) : Number(fixture.homeScore);
+      if (mine > other) wins += 1;
+      else if (mine < other) losses += 1;
+      else draws += 1;
+      history.push({ tournament: tournament.name, fixture: `${fixture.homeTeamName} ${fixture.homeScore} - ${fixture.awayScore} ${fixture.awayTeamName}`, result: mine > other ? "Win" : mine < other ? "Loss" : "Draw", date: fixture.date });
+    });
+  });
+  const ranked = [...allPlayers].filter((item) => item.rating != null).sort((a, b) => Number(b.rating) - Number(a.rating));
+  const rank = ranked.findIndex((item) => item.id === player.id) + 1;
+  const percentile = rank ? Math.ceil((rank / ranked.length) * 100) : 0;
+  return { attended: attended.length, goals: goals || Number(player.goals) || 0, assists: assists || Number(player.assists) || 0, wins, losses, draws, history: history.sort((a, b) => new Date(b.date) - new Date(a.date)), rank, percentile };
+}
+
+function playerDetailsHtml(player, stats) {
+  const joined = player.joinedAt ? timestampDate(player.joinedAt) : timestampDate(player.createdAt);
+  const years = joined ? Math.max(0, new Date().getFullYear() - joined.getFullYear()) : null;
+  const photo = player.photoUrl ? `<img src="${escapeHtml(player.photoUrl)}" alt="" />` : `<span>${escapeHtml((player.name || "?").slice(0, 1))}</span>`;
+  const detail = (label, value) => `<div><span>${label}</span><strong>${escapeHtml(value)}</strong></div>`;
+  return `<div class="modal-header"><h2>Player Profile</h2><button class="icon-button" data-close-modal type="button" aria-label="Close">✕</button></div><div class="player-detail-hero"><div class="player-detail-photo">${photo}</div><div><h1>${escapeHtml(player.name)}</h1><p>${escapeHtml(player.position || "Unassigned")} · Jersey #${escapeHtml(player.jerseyNumber ?? "-")}</p></div></div><div class="player-detail-grid">${detail("Joined Club", joined ? formatDate(joined) : "Not recorded")}${detail("Playing Years", years == null ? "Not recorded" : `${years} year${years === 1 ? "" : "s"}`)}${detail("Height", player.heightCm ? `${player.heightCm} cm` : "Not recorded")}${detail("Weight", player.weightKg ? `${player.weightKg} kg` : "Not recorded")}${detail("Fitness", player.fitnessStatus || "Not recorded")}${detail("Club Rating", player.rating == null ? "Not rated" : `${Number(player.rating).toFixed(1)} / 10`)}${detail("Rating Rank", stats.rank ? `Top ${stats.percentile}% (#${stats.rank})` : "Not ranked")}${detail("Tournaments", String(stats.attended))}${detail("Total Goals", String(stats.goals))}${detail("Total Assists", String(stats.assists))}${detail("Match Record", `${stats.wins} W · ${stats.losses} L · ${stats.draws} D`)}</div><section class="player-game-history"><h2>Game History</h2><div class="table-wrap"><table class="data-table"><thead><tr><th>Tournament</th><th>Fixture</th><th>Result</th><th>Minutes</th><th>Shots</th><th>Rating</th></tr></thead><tbody>${stats.history.map((game) => `<tr><td>${escapeHtml(game.tournament)}</td><td>${escapeHtml(game.fixture)}</td><td>${escapeHtml(game.result)}</td><td>-</td><td>-</td><td>-</td></tr>`).join("") || `<tr><td colspan="6" class="empty-state">No completed tournament matches recorded.</td></tr>`}</tbody></table></div></section>`;
+}
+
 export async function renderPlayersPage(container, { role, email }) {
   const canManage = role === "admin" || role === "moderator";
   const canDelete = role === "admin";
@@ -150,24 +218,12 @@ export async function renderPlayersPage(container, { role, email }) {
       ${canManage ? `<button class="btn btn-primary" id="add-player-button" type="button">+ Add player</button>` : ""}
     </div>
     <div id="player-form-slot"></div>
-    <div class="table-wrap">
-      <table class="data-table">
-        <thead>
-          <tr>
-            <th>Name</th><th>Rating</th><th>Tournament team</th><th>Position</th><th>Jersey #</th><th>Phone</th><th>Status</th>
-            ${canManage ? "<th>Actions</th>" : ""}
-          </tr>
-        </thead>
-        <tbody id="players-tbody">
-          <tr><td colspan="6" class="empty-state">Loading players…</td></tr>
-        </tbody>
-      </table>
-    </div>
+    <p class="page-subtitle">Select a player to view their club profile, tournament record, and game history.</p>
+    <div class="player-directory" id="player-directory"><p class="empty-state">Loading players…</p></div>
   `;
 
-  const tbody = document.getElementById("players-tbody");
+  const directory = document.getElementById("player-directory");
   const formSlot = document.getElementById("player-form-slot");
-  const colSpan = canManage ? 8 : 7;
 
   async function refresh() {
     try {
@@ -176,25 +232,25 @@ export async function renderPlayersPage(container, { role, email }) {
         role === "admin" ? listUserProfiles() : Promise.resolve([])
       ]);
       const profilesByEmail = new Map(userProfiles.map((item) => [(item.email || "").toLowerCase(), item]));
-      tbody.innerHTML = players.length
-        ? players.map((player) => playerRow(
+      directory.innerHTML = players.length
+        ? players.map((player) => playerCard(
           player,
           canManage,
           canDelete && (player.email || "").toLowerCase() !== (email || "").toLowerCase(),
           profilesByEmail.get((player.email || "").toLowerCase()),
           role === "admin"
         )).join("")
-        : `<tr><td colspan="${colSpan}" class="empty-state">No players yet.</td></tr>`;
+        : `<p class="empty-state">No players yet.</p>`;
       wireRowActions(players, profilesByEmail);
     } catch (error) {
-      tbody.innerHTML = `<tr><td colspan="${colSpan}" class="empty-state">Unable to load players.</td></tr>`;
+      directory.innerHTML = `<p class="empty-state">Unable to load players.</p>`;
       console.error("Unable to load players", error);
     }
   }
 
   function wireRowActions(players, profilesByEmail) {
     if (!canManage) return;
-    tbody.querySelectorAll("tr[data-id]").forEach((row) => {
+    directory.querySelectorAll("[data-id]").forEach((row) => {
       const id = row.dataset.id;
       const player = players.find((item) => item.id === id);
       row.querySelector("[data-action=edit]")?.addEventListener("click", () => openForm(player));
@@ -215,6 +271,20 @@ export async function renderPlayersPage(container, { role, email }) {
           console.error("Unable to delete player", error);
         }
       });
+      const openDetails = async () => {
+        const overlay = openModal(`<p class="empty-state">Loading ${escapeHtml(player.name)}'s profile…</p>`);
+        overlay.querySelector(".modal-card").classList.add("modal-card-wide");
+        try {
+          overlay.querySelector(".modal-card").innerHTML = playerDetailsHtml(player, await playerTournamentStats(player, players));
+          overlay.querySelectorAll("[data-close-modal]").forEach((button) => button.addEventListener("click", closeModal));
+        } catch (error) {
+          overlay.querySelector(".modal-card").innerHTML = `<div class="modal-header"><h2>Player Profile</h2><button class="icon-button" data-close-modal type="button" aria-label="Close">✕</button></div><p class="empty-state">Unable to load this player's tournament history.</p>`;
+          overlay.querySelector("[data-close-modal]").addEventListener("click", closeModal);
+          console.error("Unable to load player details", error);
+        }
+      };
+      row.addEventListener("click", openDetails);
+      row.addEventListener("keydown", (event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); openDetails(); } });
     });
   }
 

@@ -38,9 +38,13 @@ club/tournament rules, player roster, and finance tracking.
   - **Bootstrapping the first admin:** create an Email/Password account in Firebase
     Authentication, sign in once, then in Firestore open `users/{that-uid}` and
     manually change `role` to `"admin"`.
-- `players/{id}`: `{ name, email, position, jerseyNumber, phone, status: "active" | "inactive", teamsId, photoUrl, createdAt }`
+- `players/{id}`: `{ name, email, position, jerseyNumber, phone, status: "active" | "inactive", teamsId, photoUrl, joinedAt, heightCm, weightKg, fitnessStatus, createdAt }`
   - Created only by an administrator or moderator from **Players → Add Player**.
-    Staff can manage all player information from Player List. `status`/`teamsId` are
+    Staff can manage all player information from Player List. `joinedAt`, `heightCm`,
+    `weightKg`, and `fitnessStatus` are optional profile fields. The Player List is a
+    card directory: selecting a player shows stored profile details plus derived tournament
+    attendance, completed-fixture results, goals, assists, wins/losses/draws, and rating rank.
+    `status`/`teamsId` are
     staff-only fields; an existing linked player can edit the remaining personal fields
     from My Player Profile.
 - `tournaments/{id}`: `{ name, date, startTime, venueId, venueName, venueAddress, status,
