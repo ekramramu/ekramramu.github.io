@@ -69,10 +69,13 @@ export function renderShell(appRoot, { activePath, profile, email }) {
   appRoot.innerHTML = `
     <div class="app-shell">
       <aside class="app-sidebar" id="app-sidebar">
-        <a class="app-brand" href="#/dashboard" title="Go to Dashboard">
-          <img class="app-brand-mark" src="assets/club-logo.png" alt="" aria-hidden="true" />
-          <span class="app-brand-title">SDFC</span>
-        </a>
+        <div class="app-sidebar-header">
+          <a class="app-brand" href="#/dashboard" title="Go to Dashboard">
+            <img class="app-brand-mark" src="assets/club-logo.png" alt="" aria-hidden="true" />
+            <span class="app-brand-title">SDFC</span>
+          </a>
+          <button class="icon-button drawer-close-button" id="drawer-close-button" type="button" aria-label="Close menu" title="Close menu">✕</button>
+        </div>
         <nav class="app-nav">${navHtml}</nav>
       </aside>
       <main class="app-main">
@@ -121,6 +124,7 @@ export function renderShell(appRoot, { activePath, profile, email }) {
     const collapsed = shell.classList.toggle("sidebar-collapsed");
     menuButton.setAttribute("aria-expanded", String(!collapsed));
   });
+  appRoot.querySelector("#drawer-close-button").addEventListener("click", () => setMobileMenu(true));
 
   appRoot.querySelectorAll(".app-nav a").forEach((link) => {
     link.addEventListener("click", () => {
