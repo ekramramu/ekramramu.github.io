@@ -194,9 +194,10 @@ export async function listMatchResponses(matchId) {
   return snapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
 }
 
-export async function setMatchResponse(matchId, uid, response) {
+export async function setMatchResponse(matchId, uid, response, playerId = "") {
   return setDoc(doc(db, "matchDays", matchId, "rsvps", uid), {
     response,
+    playerId,
     updatedAt: serverTimestamp()
   });
 }

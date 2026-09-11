@@ -79,7 +79,7 @@ function renderCurrentView() {
     logoutButton.addEventListener("click", () => logoutAccount());
   }
 
-  const pageContext = { profile: currentProfile, email: authState.user.email, role, uid: authState.user.uid };
+  const pageContext = { profile: currentProfile, email: authState.user.email, role, uid: authState.user.uid, player: currentPlayer };
   if (path === "/dashboard") {
     renderDashboardPage(content, pageContext);
   } else if (path === "/rules") {

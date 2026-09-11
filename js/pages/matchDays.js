@@ -69,6 +69,10 @@ function matchFormHtml(match = {}, venues = []) {
             ${venues.map((venue) => `<option value="${escapeHtml(venue.id)}" ${match.venueId === venue.id ? "selected" : ""}>${escapeHtml(venue.name)}</option>`).join("")}
           </select>
         </label>
+        <label class="form-field form-field-wide">
+          <span>Match Result</span>
+          <input type="text" name="result" value="${escapeHtml(match.result || "")}" placeholder="e.g. SDFC 3 - 2 Opponent" />
+        </label>
       </div>
       <p class="auth-error" id="match-form-error" role="alert" hidden></p>
       <div class="auth-actions modal-actions">
@@ -117,7 +121,7 @@ function matchCard(match, { totalPlayers, responses, uid, canManage, canDelete }
   `;
 }
 
-export async function renderMatchDaysPage(container, { role, uid }) {
+export async function renderMatchDaysPage(container, { role, uid, player }) {
   const canManage = role === "admin" || role === "moderator";
   const canDelete = role === "admin";
   container.innerHTML = `
@@ -166,7 +170,7 @@ export async function renderMatchDaysPage(container, { role, uid }) {
       card.querySelectorAll("[data-rsvp]").forEach((button) => {
         button.addEventListener("click", async () => {
           try {
-            await setMatchResponse(id, uid, button.dataset.rsvp);
+            await setMatchResponse(id, uid, button.dataset.rsvp, player?.id || "");
             await refresh();
           } catch (error) {
             console.error("Unable to save your response", error);
@@ -227,7 +231,8 @@ export async function renderMatchDaysPage(container, { role, uid }) {
         endTime: String(formData.get("endTime") || ""),
         venueId: venueId || null,
         venueName: venue?.name || "",
-        venueAddress: venue?.address || ""
+        venueAddress: venue?.address || "",
+        result: String(formData.get("result") || "").trim()
       };
       if (!payload.title || !payload.date || !payload.startTime) {
         errorEl.textContent = "Title, date, and start time are required.";
