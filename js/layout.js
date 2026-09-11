@@ -110,9 +110,22 @@ export function renderShell(appRoot, { activePath, profile, email }) {
 
   const shell = appRoot.querySelector(".app-shell");
   const menuButton = appRoot.querySelector(".menu-button");
+  const mobileQuery = window.matchMedia("(max-width: 820px)");
+  const setMobileMenu = (mobile) => {
+    shell.classList.toggle("sidebar-collapsed", mobile);
+    menuButton.setAttribute("aria-expanded", String(!mobile));
+  };
+  setMobileMenu(mobileQuery.matches);
+  mobileQuery.addEventListener("change", (event) => setMobileMenu(event.matches));
   menuButton.addEventListener("click", () => {
     const collapsed = shell.classList.toggle("sidebar-collapsed");
     menuButton.setAttribute("aria-expanded", String(!collapsed));
+  });
+
+  appRoot.querySelectorAll(".app-nav a").forEach((link) => {
+    link.addEventListener("click", () => {
+      if (mobileQuery.matches) setMobileMenu(true);
+    });
   });
 
   const account = appRoot.querySelector(".topbar-account");
