@@ -114,6 +114,7 @@ function matchCard(match, { totalPlayers, responses, uid, canManage, canDelete }
           <button class="btn btn-small ${mine?.response === "out" ? "btn-danger" : "btn-secondary"}" data-rsvp="out" type="button">✕ Can't make it</button>
         </div>
         <a class="btn btn-secondary btn-block" href="${calendarLink(match)}" target="_blank" rel="noopener">Add to calendar</a>
+        <a class="btn btn-secondary btn-block" href="#/match-days/manage/${encodeURIComponent(match.id)}">Manage</a>
         ${canManage ? `
           <div class="table-actions">
             <button class="btn btn-small btn-secondary" data-action="edit" type="button">Edit</button>

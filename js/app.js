@@ -9,13 +9,14 @@ import { renderPlayerDetailsPage, renderPlayersPage, renderNewPlayerPage, render
 import { renderCollectionsPage, renderBillPaymentsPage } from "./pages/finance.js";
 import { renderTournamentListPage, renderTournamentManagePage } from "./pages/tournament.js";
 import { renderMatchDaysPage } from "./pages/matchDays.js";
+import { renderMatchDayManagePage } from "./pages/matchDayManage.js";
 import { renderVenuesPage } from "./pages/venues.js";
 import { renderSettingsPage } from "./pages/settings.js";
 import { registerRoute, setNotFoundHandler, startRouter, navigate, getCurrentPath } from "./router.js";
 
 const appRoot = document.querySelector("#app");
 const ONBOARDING_PATH = "/complete-profile";
-const PROTECTED_PATHS = ["/dashboard", ONBOARDING_PATH, "/rules", "/players", "/players/new", "/players/detail", "/players/my-profile", "/players/monthly-profile", "/match-days", "/venues", "/tournament-2026", "/tournaments", "/tournaments/manage", "/finance", "/finance/collections", "/finance/bill-payments", "/settings"];
+const PROTECTED_PATHS = ["/dashboard", ONBOARDING_PATH, "/rules", "/players", "/players/new", "/players/detail", "/players/my-profile", "/players/monthly-profile", "/match-days", "/match-days/manage", "/venues", "/tournament-2026", "/tournaments", "/tournaments/manage", "/finance", "/finance/collections", "/finance/bill-payments", "/settings"];
 
 let authState = { status: "loading" };
 let currentProfile = null;
@@ -100,6 +101,8 @@ function renderCurrentView() {
     renderMonthlyProfilePage(content, pageContext);
   } else if (path === "/match-days") {
     renderMatchDaysPage(content, pageContext);
+  } else if (path === "/match-days/manage") {
+    renderMatchDayManagePage(content, pageContext);
   } else if (path === "/venues") {
     renderVenuesPage(content, pageContext);
   } else if (path === "/tournament-2026") {

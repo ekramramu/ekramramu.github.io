@@ -23,6 +23,7 @@ export function getCurrentPath() {
   const path = hash.split("?")[0] || "/dashboard";
   if (path.startsWith("/tournaments/manage/")) return "/tournaments/manage";
   if (path.startsWith("/players/detail/")) return "/players/detail";
+  if (path.startsWith("/match-days/manage/")) return "/match-days/manage";
   return path;
 }
 

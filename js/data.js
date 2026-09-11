@@ -184,8 +184,9 @@ export async function updateMatchDay(matchId, matchDay) {
 }
 
 export async function deleteMatchDay(matchId) {
-  const responses = await getDocs(collection(db, "matchDays", matchId, "rsvps"));
-  await Promise.all(responses.docs.map((item) => deleteDoc(item.ref)));
+  const childCollections = ["rsvps", "teams", "fixtures"];
+  const snapshots = await Promise.all(childCollections.map((name) => getDocs(collection(db, "matchDays", matchId, name))));
+  await Promise.all(snapshots.flatMap((snapshot) => snapshot.docs.map((item) => deleteDoc(item.ref))));
   return deleteDoc(doc(db, "matchDays", matchId));
 }
 
@@ -200,6 +201,54 @@ export async function setMatchResponse(matchId, uid, response, playerId = "") {
     playerId,
     updatedAt: serverTimestamp()
   });
+}
+
+export async function listMatchDayTeams(matchId) {
+  const snapshot = await getDocs(query(collection(db, "matchDays", matchId, "teams"), orderBy("name", "asc")));
+  return snapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
+}
+
+export async function addMatchDayTeam(matchId, payload) {
+  return addDoc(collection(db, "matchDays", matchId, "teams"), {
+    ...payload,
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp()
+  });
+}
+
+export async function updateMatchDayTeam(matchId, teamId, payload) {
+  return updateDoc(doc(db, "matchDays", matchId, "teams", teamId), {
+    ...payload,
+    updatedAt: serverTimestamp()
+  });
+}
+
+export async function deleteMatchDayTeam(matchId, teamId) {
+  return deleteDoc(doc(db, "matchDays", matchId, "teams", teamId));
+}
+
+export async function listMatchDayFixtures(matchId) {
+  const snapshot = await getDocs(query(collection(db, "matchDays", matchId, "fixtures"), orderBy("startTime", "asc")));
+  return snapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
+}
+
+export async function addMatchDayFixture(matchId, payload) {
+  return addDoc(collection(db, "matchDays", matchId, "fixtures"), {
+    ...payload,
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp()
+  });
+}
+
+export async function updateMatchDayFixture(matchId, fixtureId, payload) {
+  return updateDoc(doc(db, "matchDays", matchId, "fixtures", fixtureId), {
+    ...payload,
+    updatedAt: serverTimestamp()
+  });
+}
+
+export async function deleteMatchDayFixture(matchId, fixtureId) {
+  return deleteDoc(doc(db, "matchDays", matchId, "fixtures", fixtureId));
 }
 
 export async function listVenues() {

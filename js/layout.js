@@ -5,6 +5,7 @@ const NAV_ITEMS = [
   {
     label: "Match Management",
     icon: "assets/football-field.png",
+    activePaths: ["/match-days/manage"],
     children: [
       { path: "/match-days", label: "Match Days" },
       { path: "/venues", label: "Venues" }
