@@ -1,13 +1,13 @@
 import { watchAuthState, getUserProfile, ensureUserProfile, logoutAccount, updateUserPreferences } from "./auth.js";
-import { ensurePlayerProfile } from "./data.js";
+import { listPlayers } from "./data.js";
 import { renderShell } from "./layout.js";
-import { renderLogin, renderRegister, renderVerifyNotice, renderForgotPassword } from "./pages/authPages.js";
+import { renderLogin, renderVerifyNotice, renderForgotPassword } from "./pages/authPages.js";
 import { needsProfileCompletion, renderCompleteProfilePage } from "./pages/completeProfile.js";
 import { renderDashboardPage } from "./pages/dashboard.js";
 import { renderRulesPage } from "./pages/rules.js";
 import { renderPlayersPage, renderNewPlayerPage, renderMyProfilePage, renderMonthlyProfilePage } from "./pages/players.js";
 import { renderCollectionsPage, renderBillPaymentsPage } from "./pages/finance.js";
-import { renderTournamentPage } from "./pages/tournament.js";
+import { renderTournamentListPage, renderTournamentManagePage } from "./pages/tournament.js";
 import { renderMatchDaysPage } from "./pages/matchDays.js";
 import { renderVenuesPage } from "./pages/venues.js";
 import { renderSettingsPage } from "./pages/settings.js";
@@ -15,7 +15,7 @@ import { registerRoute, setNotFoundHandler, startRouter, navigate, getCurrentPat
 
 const appRoot = document.querySelector("#app");
 const ONBOARDING_PATH = "/complete-profile";
-const PROTECTED_PATHS = ["/dashboard", ONBOARDING_PATH, "/rules", "/players", "/players/new", "/players/my-profile", "/players/monthly-profile", "/match-days", "/venues", "/tournament-2026", "/finance", "/finance/collections", "/finance/bill-payments", "/settings"];
+const PROTECTED_PATHS = ["/dashboard", ONBOARDING_PATH, "/rules", "/players", "/players/new", "/players/my-profile", "/players/monthly-profile", "/match-days", "/venues", "/tournament-2026", "/tournaments", "/tournaments/manage", "/finance", "/finance/collections", "/finance/bill-payments", "/settings"];
 
 let authState = { status: "loading" };
 let currentProfile = null;
@@ -30,9 +30,7 @@ function renderCurrentView() {
   }
 
   if (authState.status === "signed-out") {
-    if (path === "/register") {
-      renderRegister(appRoot);
-    } else if (path === "/forgot-password") {
+    if (path === "/forgot-password") {
       renderForgotPassword(appRoot);
     } else {
       renderLogin(appRoot);
@@ -69,7 +67,7 @@ function renderCurrentView() {
     return;
   }
 
-  if (path === "/login" || path === "/register" || path === ONBOARDING_PATH || !PROTECTED_PATHS.includes(path)) {
+  if (path === "/login" || path === ONBOARDING_PATH || !PROTECTED_PATHS.includes(path)) {
     navigate("/dashboard");
     return;
   }
@@ -103,7 +101,11 @@ function renderCurrentView() {
   } else if (path === "/venues") {
     renderVenuesPage(content, pageContext);
   } else if (path === "/tournament-2026") {
-    renderTournamentPage(content);
+    navigate("/tournaments");
+  } else if (path === "/tournaments") {
+    renderTournamentListPage(content, pageContext);
+  } else if (path === "/tournaments/manage") {
+    renderTournamentManagePage(content, pageContext);
   } else if (path === "/finance") {
     navigate("/finance/collections");
   } else if (path === "/finance/collections") {
@@ -115,7 +117,7 @@ function renderCurrentView() {
   }
 }
 
-[...PROTECTED_PATHS, "/login", "/register", "/forgot-password"].forEach((path) => registerRoute(path, renderCurrentView));
+[...PROTECTED_PATHS, "/login", "/forgot-password"].forEach((path) => registerRoute(path, renderCurrentView));
 setNotFoundHandler(renderCurrentView);
 
 watchAuthState(async (user) => {
@@ -147,14 +149,17 @@ watchAuthState(async (user) => {
     console.error("Unable to load user profile", error);
     currentProfile = null;
   }
+  if (currentProfile?.disabled) {
+    await logoutAccount();
+    return;
+  }
   try {
-    currentPlayer = await ensurePlayerProfile({
-      ...currentProfile,
-      email: user.email,
-      name: currentProfile?.name || user.displayName
-    });
+    const players = await listPlayers();
+    currentPlayer = players.find((player) => (
+      (player.email || "").toLowerCase() === (user.email || "").toLowerCase()
+    )) || null;
   } catch (error) {
-    console.error("Unable to link player profile", error);
+    console.error("Unable to load linked player profile", error);
     currentPlayer = null;
   }
   onboardingRequired = needsProfileCompletion(currentProfile, currentPlayer);

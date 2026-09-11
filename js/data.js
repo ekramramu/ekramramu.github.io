@@ -3,13 +3,13 @@ import {
   collection,
   deleteDoc,
   doc,
+  getDoc,
   getDocs,
   orderBy,
   query,
   serverTimestamp,
   setDoc,
-  updateDoc,
-  where
+  updateDoc
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-lite.js";
 import { db } from "./firebase.js";
 import { DEFAULT_PLAYERS } from "./clubData.js";
@@ -43,29 +43,28 @@ export async function updatePlayer(playerId, player) {
   return updateDoc(doc(db, "players", playerId), player);
 }
 
-// Self-heals a missing player record for the signed-in user (e.g. accounts
-// registered before this link existed), so nobody has to click a button.
-export async function ensurePlayerProfile({ email, name, phone, position, jerseyNumber, photoUrl }) {
-  const snapshot = await getDocs(query(collection(db, "players"), where("email", "==", email)));
-  if (!snapshot.empty) {
-    const existing = snapshot.docs[0];
-    return { id: existing.id, ...existing.data() };
-  }
-  const player = {
-    name: name || email,
-    email,
-    phone: phone || "",
-    position: position || "",
-    jerseyNumber: jerseyNumber ?? null,
-    photoUrl: photoUrl || "",
-    status: "active"
-  };
-  const ref = await addPlayer(player);
-  return { id: ref.id, ...player };
-}
-
 export async function deletePlayer(playerId) {
   return deleteDoc(doc(db, "players", playerId));
+}
+
+export async function listUserProfiles() {
+  const snapshot = await getDocs(collection(db, "users"));
+  return snapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
+}
+
+export async function updateUserRole(userId, role) {
+  return updateDoc(doc(db, "users", userId), { role });
+}
+
+export async function revokePortalAccessByEmail(email) {
+  const profile = (await listUserProfiles()).find((item) => (
+    (item.email || "").toLowerCase() === (email || "").toLowerCase()
+  ));
+  if (!profile) return;
+  await updateDoc(doc(db, "users", profile.id), {
+    disabled: true,
+    deletedAt: serverTimestamp()
+  });
 }
 
 export async function listTransactions() {
@@ -104,7 +103,7 @@ export function normalizeLegacyCollections(transactions) {
     }));
 }
 
-export function normalizeLegacyBillPayments(transactions) {
+  export function normalizeLegacyBillPayments(transactions) {
   return transactions
     .filter((tx) => tx.type === "expense")
     .map((tx) => ({
@@ -140,6 +139,10 @@ export async function updateFinanceCollection(collectionId, payload) {
   });
 }
 
+export async function deleteFinanceCollection(collectionId) {
+  return deleteDoc(doc(db, "financeCollections", collectionId));
+}
+
 export async function listFinanceBillPayments() {
   const snapshot = await getDocs(query(collection(db, "financeBillPayments"), orderBy("paymentDate", "desc")));
   return snapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
@@ -160,6 +163,10 @@ export async function updateFinanceBillPayment(billPaymentId, payload) {
   });
 }
 
+export async function deleteFinanceBillPayment(billPaymentId) {
+  return deleteDoc(doc(db, "financeBillPayments", billPaymentId));
+}
+
 export async function listMatchDays() {
   const snapshot = await getDocs(query(collection(db, "matchDays"), orderBy("date", "asc")));
   return snapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
@@ -177,6 +184,8 @@ export async function updateMatchDay(matchId, matchDay) {
 }
 
 export async function deleteMatchDay(matchId) {
+  const responses = await getDocs(collection(db, "matchDays", matchId, "rsvps"));
+  await Promise.all(responses.docs.map((item) => deleteDoc(item.ref)));
   return deleteDoc(doc(db, "matchDays", matchId));
 }
 
@@ -211,6 +220,134 @@ export async function updateVenue(venueId, venue) {
 
 export async function deleteVenue(venueId) {
   return deleteDoc(doc(db, "venues", venueId));
+}
+
+export async function listTournaments() {
+  const snapshot = await getDocs(query(collection(db, "tournaments"), orderBy("date", "asc")));
+  return snapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
+}
+
+export async function getTournament(tournamentId) {
+  const snapshot = await getDoc(doc(db, "tournaments", tournamentId));
+  return snapshot.exists() ? { id: snapshot.id, ...snapshot.data() } : null;
+}
+
+export async function addTournament(payload) {
+  return addDoc(collection(db, "tournaments"), {
+    ...payload,
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp()
+  });
+}
+
+export async function updateTournament(tournamentId, payload) {
+  return updateDoc(doc(db, "tournaments", tournamentId), {
+    ...payload,
+    updatedAt: serverTimestamp()
+  });
+}
+
+export async function deleteTournament(tournamentId) {
+  const childCollections = ["teams", "fixtures", "collections", "billPayments"];
+  const snapshots = await Promise.all(childCollections.map((name) => getDocs(collection(db, "tournaments", tournamentId, name))));
+  await Promise.all(snapshots.flatMap((snapshot) => snapshot.docs.map((item) => deleteDoc(item.ref))));
+  return deleteDoc(doc(db, "tournaments", tournamentId));
+}
+
+export async function listTournamentTeams(tournamentId) {
+  const snapshot = await getDocs(query(collection(db, "tournaments", tournamentId, "teams"), orderBy("name", "asc")));
+  return snapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
+}
+
+export async function addTournamentTeam(tournamentId, payload) {
+  return addDoc(collection(db, "tournaments", tournamentId, "teams"), {
+    ...payload,
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp()
+  });
+}
+
+export async function updateTournamentTeam(tournamentId, teamId, payload) {
+  return updateDoc(doc(db, "tournaments", tournamentId, "teams", teamId), {
+    ...payload,
+    updatedAt: serverTimestamp()
+  });
+}
+
+export async function deleteTournamentTeam(tournamentId, teamId) {
+  return deleteDoc(doc(db, "tournaments", tournamentId, "teams", teamId));
+}
+
+export async function listTournamentFixtures(tournamentId) {
+  const snapshot = await getDocs(query(collection(db, "tournaments", tournamentId, "fixtures"), orderBy("date", "asc")));
+  return snapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
+}
+
+export async function addTournamentFixture(tournamentId, payload) {
+  return addDoc(collection(db, "tournaments", tournamentId, "fixtures"), {
+    ...payload,
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp()
+  });
+}
+
+export async function updateTournamentFixture(tournamentId, fixtureId, payload) {
+  return updateDoc(doc(db, "tournaments", tournamentId, "fixtures", fixtureId), {
+    ...payload,
+    updatedAt: serverTimestamp()
+  });
+}
+
+export async function deleteTournamentFixture(tournamentId, fixtureId) {
+  return deleteDoc(doc(db, "tournaments", tournamentId, "fixtures", fixtureId));
+}
+
+export async function listTournamentCollections(tournamentId) {
+  const snapshot = await getDocs(query(collection(db, "tournaments", tournamentId, "collections"), orderBy("date", "desc")));
+  return snapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
+}
+
+export async function addTournamentCollection(tournamentId, payload) {
+  return addDoc(collection(db, "tournaments", tournamentId, "collections"), {
+    ...payload,
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp()
+  });
+}
+
+export async function updateTournamentCollection(tournamentId, collectionId, payload) {
+  return updateDoc(doc(db, "tournaments", tournamentId, "collections", collectionId), {
+    ...payload,
+    updatedAt: serverTimestamp()
+  });
+}
+
+export async function deleteTournamentCollection(tournamentId, collectionId) {
+  return deleteDoc(doc(db, "tournaments", tournamentId, "collections", collectionId));
+}
+
+export async function listTournamentBillPayments(tournamentId) {
+  const snapshot = await getDocs(query(collection(db, "tournaments", tournamentId, "billPayments"), orderBy("date", "desc")));
+  return snapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
+}
+
+export async function addTournamentBillPayment(tournamentId, payload) {
+  return addDoc(collection(db, "tournaments", tournamentId, "billPayments"), {
+    ...payload,
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp()
+  });
+}
+
+export async function updateTournamentBillPayment(tournamentId, paymentId, payload) {
+  return updateDoc(doc(db, "tournaments", tournamentId, "billPayments", paymentId), {
+    ...payload,
+    updatedAt: serverTimestamp()
+  });
+}
+
+export async function deleteTournamentBillPayment(tournamentId, paymentId) {
+  return deleteDoc(doc(db, "tournaments", tournamentId, "billPayments", paymentId));
 }
 
 export function summarizeTransactions(transactions) {

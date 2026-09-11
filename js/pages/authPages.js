@@ -1,6 +1,4 @@
-import { loginAccount, registerAccount, resendVerificationEmail, logoutAccount, refreshCurrentUser, requestPasswordReset } from "../auth.js";
-import { addPlayer } from "../data.js";
-import { positionOptionsHtml } from "./players.js";
+import { loginAccount, resendVerificationEmail, logoutAccount, refreshCurrentUser, requestPasswordReset } from "../auth.js";
 import { escapeHtml, friendlyAuthError } from "../utils.js";
 
 function authShell(title, subtitle, bodyHtml) {
@@ -38,7 +36,6 @@ export function renderLogin(appRoot) {
         <p class="auth-forgot"><a href="#/forgot-password">Forgot password?</a></p>
         <button class="btn btn-primary btn-block" type="submit">Sign in</button>
       </form>
-      <p class="auth-switch">Don't have an account? <a href="#/register">Register</a></p>
     `
   );
 
@@ -61,89 +58,6 @@ export function renderLogin(appRoot) {
       errorEl.textContent = friendlyAuthError(error);
       errorEl.hidden = false;
     } finally {
-      submitButton.disabled = false;
-    }
-  });
-}
-
-export function renderRegister(appRoot) {
-  appRoot.innerHTML = authShell(
-    "Create your account",
-    "Register to join the club. You'll need to confirm your email before signing in.",
-    `
-      <form id="register-form" class="auth-form" novalidate>
-        <p class="auth-error" id="register-error" role="alert" hidden></p>
-        <label class="form-field">
-          <span>Full name</span>
-          <input type="text" name="name" autocomplete="name" required />
-        </label>
-        <label class="form-field">
-          <span>Email address</span>
-          <input type="email" name="email" autocomplete="email" required />
-        </label>
-        <label class="form-field">
-          <span>Playing Position</span>
-          <select name="position">${positionOptionsHtml()}</select>
-        </label>
-        <label class="form-field">
-          <span>Mobile Number</span>
-          <input type="tel" name="phone" autocomplete="tel" placeholder="e.g. 01XXXXXXXXX" />
-        </label>
-        <label class="form-field">
-          <span>Jersey Number</span>
-          <input type="number" name="jerseyNumber" min="0" placeholder="e.g. 7" />
-        </label>
-        <label class="form-field">
-          <span>Password</span>
-          <input type="password" name="password" autocomplete="new-password" minlength="6" required />
-        </label>
-        <label class="form-field">
-          <span>Confirm password</span>
-          <input type="password" name="confirmPassword" autocomplete="new-password" minlength="6" required />
-        </label>
-        <button class="btn btn-primary btn-block" type="submit">Create account</button>
-      </form>
-      <p class="auth-switch">Already have an account? <a href="#/login">Sign in</a></p>
-    `
-  );
-
-  const form = document.getElementById("register-form");
-  const errorEl = document.getElementById("register-error");
-
-  form.addEventListener("submit", async (event) => {
-    event.preventDefault();
-    errorEl.hidden = true;
-    const formData = new FormData(form);
-    const password = String(formData.get("password") || "");
-    const confirmPassword = String(formData.get("confirmPassword") || "");
-    if (password !== confirmPassword) {
-      errorEl.textContent = "Passwords do not match.";
-      errorEl.hidden = false;
-      return;
-    }
-    const submitButton = form.querySelector("button[type=submit]");
-    submitButton.disabled = true;
-    const name = String(formData.get("name") || "").trim();
-    const email = String(formData.get("email") || "").trim();
-    try {
-      await registerAccount({ name, email, password });
-      try {
-        await addPlayer({
-          name,
-          email,
-          position: String(formData.get("position") || "").trim(),
-          phone: String(formData.get("phone") || "").trim(),
-          jerseyNumber: formData.get("jerseyNumber") ? Number(formData.get("jerseyNumber")) : null,
-          status: "active"
-        });
-      } catch (playerError) {
-        // Non-fatal: My Player Profile retries creation automatically on the next visit.
-        console.error("Unable to create linked player profile", playerError);
-      }
-      // onAuthStateChanged in app.js drives the redirect to the verify-notice screen
-    } catch (error) {
-      errorEl.textContent = friendlyAuthError(error);
-      errorEl.hidden = false;
       submitButton.disabled = false;
     }
   });

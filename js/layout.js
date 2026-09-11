@@ -10,7 +10,7 @@ const NAV_ITEMS = [
       { path: "/venues", label: "Venues" }
     ]
   },
-  { path: "/tournament-2026", label: "Tournament 2026", icon: "assets/turnement.png" },
+  { path: "/tournaments", activePaths: ["/tournaments", "/tournaments/manage"], label: "Tournaments", icon: "assets/turnement.png" },
   {
     label: "Player",
     icon: "assets/player.png",
@@ -52,8 +52,9 @@ export function renderShell(appRoot, { activePath, profile, email }) {
         </div>
       `;
     }
+    const itemActive = (item.activePaths || [item.path]).includes(activePath);
     return `
-      <a class="app-nav-link${activePath === item.path ? " active" : ""}" href="#${item.path}">
+      <a class="app-nav-link${itemActive ? " active" : ""}" href="#${item.path}">
         <img class="app-nav-icon" src="${item.icon}" alt="" aria-hidden="true" />
         <span>${item.label}</span>
       </a>

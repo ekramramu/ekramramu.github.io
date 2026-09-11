@@ -79,7 +79,7 @@ function matchFormHtml(match = {}, venues = []) {
   `;
 }
 
-function matchCard(match, { totalPlayers, responses, uid, isAdmin }) {
+function matchCard(match, { totalPlayers, responses, uid, canManage, canDelete }) {
   const inCount = responses.filter((item) => item.response === "in").length;
   const outCount = responses.filter((item) => item.response === "out").length;
   const pendingCount = Math.max(totalPlayers - inCount - outCount, 0);
@@ -106,10 +106,10 @@ function matchCard(match, { totalPlayers, responses, uid, isAdmin }) {
           <button class="btn btn-small ${mine?.response === "out" ? "btn-danger" : "btn-secondary"}" data-rsvp="out" type="button">✕ Can't make it</button>
         </div>
         <a class="btn btn-secondary btn-block" href="${calendarLink(match)}" target="_blank" rel="noopener">Add to calendar</a>
-        ${isAdmin ? `
+        ${canManage ? `
           <div class="table-actions">
             <button class="btn btn-small btn-secondary" data-action="edit" type="button">Edit</button>
-            <button class="btn btn-small btn-danger" data-action="delete" type="button">Delete</button>
+            ${canDelete ? `<button class="btn btn-small btn-danger" data-action="delete" type="button">Delete</button>` : ""}
           </div>
         ` : ""}
       </div>
@@ -118,14 +118,15 @@ function matchCard(match, { totalPlayers, responses, uid, isAdmin }) {
 }
 
 export async function renderMatchDaysPage(container, { role, uid }) {
-  const isAdmin = role === "admin" || role === "moderator";
+  const canManage = role === "admin" || role === "moderator";
+  const canDelete = role === "admin";
   container.innerHTML = `
     <div class="page-header">
       <div>
         <h1 class="page-title">Match Days</h1>
         <p class="page-subtitle">Schedule, attendance, and calendar links for upcoming matches.</p>
       </div>
-      ${isAdmin ? `<button class="btn btn-primary" id="add-match-button" type="button">+ New Match Day</button>` : ""}
+      ${canManage ? `<button class="btn btn-primary" id="add-match-button" type="button">+ New Match Day</button>` : ""}
     </div>
     <div class="matchday-list" id="matchday-list">
       <p class="empty-state">Loading match days…</p>
@@ -147,7 +148,8 @@ export async function renderMatchDaysPage(container, { role, uid }) {
           totalPlayers: players.length,
           responses: responsesByMatch[index],
           uid,
-          isAdmin
+          canManage,
+          canDelete
         }))
         .join("");
       wireCardActions(matches);
@@ -248,7 +250,7 @@ export async function renderMatchDaysPage(container, { role, uid }) {
     });
   }
 
-  if (isAdmin) {
+  if (canManage) {
     document.getElementById("add-match-button").addEventListener("click", () => openForm());
   }
 

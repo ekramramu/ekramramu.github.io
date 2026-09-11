@@ -1,6 +1,8 @@
 import {
   addFinanceBillPayment,
   addFinanceCollection,
+  deleteFinanceBillPayment,
+  deleteFinanceCollection,
   listFinanceBillPayments,
   listFinanceCollections,
   listPlayers,
@@ -224,7 +226,7 @@ function chartCardHtml(years, chartYear, legendLabel) {
 // Collections
 // ---------------------------------------------------------------------------
 
-function collectionRowHtml(record, isAdmin) {
+function collectionRowHtml(record, canManage, canDelete) {
   return `
     <tr data-id="${escapeHtml(record.id)}">
       <td>${escapeHtml(record.transactionId)}</td>
@@ -235,7 +237,7 @@ function collectionRowHtml(record, isAdmin) {
       <td>${escapeHtml(record.voucher || "-")}</td>
       <td>${escapeHtml(record.receivedInto || "-")}</td>
       <td class="amount-cell">${formatCurrency(record.amount)}</td>
-      ${isAdmin ? `<td class="table-actions">${record.legacy ? "—" : `<button class="btn btn-small btn-secondary" data-action="edit" type="button">Edit</button>`}</td>` : ""}
+      ${canManage ? `<td class="table-actions">${record.legacy ? "—" : `<button class="btn btn-small btn-secondary" data-action="edit" type="button">Edit</button>${canDelete ? `<button class="btn btn-small btn-danger" data-action="delete" type="button">Delete</button>` : ""}`}</td>` : ""}
     </tr>
   `;
 }
@@ -287,6 +289,7 @@ function collectionFormHtml(record, players) {
 
 export async function renderCollectionsPage(container, { role }) {
   const isAdmin = role === "admin" || role === "moderator";
+  const canDelete = role === "admin";
   const colSpan = isAdmin ? 9 : 8;
 
   container.innerHTML = `
@@ -328,7 +331,7 @@ export async function renderCollectionsPage(container, { role }) {
       dateField: "collectionDate"
     });
     tbody.innerHTML = filtered.length
-      ? filtered.map((record) => collectionRowHtml(record, isAdmin)).join("")
+      ? filtered.map((record) => collectionRowHtml(record, isAdmin, canDelete)).join("")
       : `<tr><td colspan="${colSpan}" class="empty-state">${allRecords.length ? "No collections match your search." : "No collections yet."}</td></tr>`;
     wireRowActions(filtered);
   }
@@ -348,6 +351,11 @@ export async function renderCollectionsPage(container, { role }) {
       const id = row.dataset.id;
       const record = records.find((item) => item.id === id);
       row.querySelector("[data-action=edit]")?.addEventListener("click", () => openForm(record));
+      row.querySelector("[data-action=delete]")?.addEventListener("click", async () => {
+        if (!window.confirm(`Delete collection ${record.transactionId}?`)) return;
+        await deleteFinanceCollection(id);
+        await refresh();
+      });
     });
   }
 
@@ -514,7 +522,7 @@ export async function renderCollectionsPage(container, { role }) {
 // Bill Payments
 // ---------------------------------------------------------------------------
 
-function billPaymentRowHtml(record, isAdmin) {
+function billPaymentRowHtml(record, canManage, canDelete) {
   return `
     <tr data-id="${escapeHtml(record.id)}">
       <td>${escapeHtml(record.billId)}</td>
@@ -523,7 +531,7 @@ function billPaymentRowHtml(record, isAdmin) {
       <td>${escapeHtml(record.costType || "—")}</td>
       <td>${escapeHtml(record.paidFrom || "-")}</td>
       <td class="amount-cell">${formatCurrency(record.amount)}</td>
-      ${isAdmin ? `<td class="table-actions">${record.legacy ? "—" : `<button class="btn btn-small btn-secondary" data-action="edit" type="button">Edit</button>`}</td>` : ""}
+      ${canManage ? `<td class="table-actions">${record.legacy ? "—" : `<button class="btn btn-small btn-secondary" data-action="edit" type="button">Edit</button>${canDelete ? `<button class="btn btn-small btn-danger" data-action="delete" type="button">Delete</button>` : ""}`}</td>` : ""}
     </tr>
   `;
 }
@@ -570,6 +578,7 @@ function billPaymentFormHtml(record) {
 
 export async function renderBillPaymentsPage(container, { role }) {
   const isAdmin = role === "admin" || role === "moderator";
+  const canDelete = role === "admin";
   const colSpan = isAdmin ? 7 : 6;
 
   container.innerHTML = `
@@ -609,7 +618,7 @@ export async function renderBillPaymentsPage(container, { role }) {
       dateField: "paymentDate"
     });
     tbody.innerHTML = filtered.length
-      ? filtered.map((record) => billPaymentRowHtml(record, isAdmin)).join("")
+      ? filtered.map((record) => billPaymentRowHtml(record, isAdmin, canDelete)).join("")
       : `<tr><td colspan="${colSpan}" class="empty-state">${allRecords.length ? "No bill payments match your search." : "No bill payments yet."}</td></tr>`;
     wireRowActions(filtered);
   }
@@ -629,6 +638,11 @@ export async function renderBillPaymentsPage(container, { role }) {
       const id = row.dataset.id;
       const record = records.find((item) => item.id === id);
       row.querySelector("[data-action=edit]")?.addEventListener("click", () => openForm(record));
+      row.querySelector("[data-action=delete]")?.addEventListener("click", async () => {
+        if (!window.confirm(`Delete bill payment ${record.billId}?`)) return;
+        await deleteFinanceBillPayment(id);
+        await refresh();
+      });
     });
   }
 

@@ -9,15 +9,16 @@ club/tournament rules, player roster, and finance tracking.
 - `css/styles.css` — auth screens, sidebar app shell, dashboard cards, tables, forms.
 - `js/firebase-config.js` — public Firebase web config.
 - `js/firebase.js` — shared Firebase app/auth/Firestore instances.
-- `js/auth.js` — register/login/logout/email-verification logic.
+- `js/auth.js` — sign-in, sign-out, password-reset, and email-verification logic.
 - `js/data.js` — Firestore CRUD for players, match days/venues, and finance records
   (Collections, Bill Payments, and the legacy transaction ledger).
 - `js/router.js` — minimal hash-based router.
 - `js/layout.js` — sidebar app shell.
 - `js/app.js` — wires auth state + router + pages together.
-- `js/pages/` — `authPages.js` (login/register/verify), `dashboard.js`, `rules.js`, `players.js`,
+- `js/pages/` — `authPages.js` (login/password reset/verify), `dashboard.js`, `rules.js`, `players.js`,
   `finance.js` (Collections and Bill Payment ledgers, at `#/finance/collections` and
-  `#/finance/bill-payments`; `#/finance` redirects to Collections).
+  `#/finance/bill-payments`; `#/finance` redirects to Collections), and `tournament.js`
+  (tournament list and per-tournament management workspace).
 - `firestore.rules` — role-based security rules.
 
 ## 1. Firebase setup
@@ -30,17 +31,31 @@ club/tournament rules, player roster, and finance tracking.
 ## 2. Data model
 
 - `users/{uid}`: `{ name, email, role: "player" | "moderator" | "admin", createdAt }`
-  - Created automatically at registration with `role: "player"`.
+  - Created with `role: "player"` on first sign-in if an externally provisioned account has no user document.
   - Only an existing admin can promote a user to `"moderator"`/`"admin"` (rules block self-promotion).
   - Moderators have the same content permissions as admins (players, finance, match days,
     venues) but cannot manage other users' roles — that stays admin-only.
-  - **Bootstrapping the first admin:** register an account normally, then in the
-    Firebase Console → Firestore, open `users/{that-uid}` and manually change
-    `role` to `"admin"`.
+  - **Bootstrapping the first admin:** create an Email/Password account in Firebase
+    Authentication, sign in once, then in Firestore open `users/{that-uid}` and
+    manually change `role` to `"admin"`.
 - `players/{id}`: `{ name, email, position, jerseyNumber, phone, status: "active" | "inactive", teamsId, photoUrl, createdAt }`
-  - Created automatically at registration (from the signup form) or self-healed on next
-    sign-in if missing. `status`/`teamsId` are admin/moderator-only fields; everything else
-    is player-owned and editable from My Player Profile.
+  - Created only by an administrator or moderator from **Players → Add Player**.
+    Staff can manage all player information from Player List. `status`/`teamsId` are
+    staff-only fields; an existing linked player can edit the remaining personal fields
+    from My Player Profile.
+- `tournaments/{id}`: `{ name, date, startTime, venueId, venueName, venueAddress, status,
+  playerIds, format, notes, createdAt, updatedAt }` — tournament identity, schedule,
+  selected roster, lifecycle status, and venue snapshot.
+  - `teams/{id}`: `{ name, playerIds, createdAt, updatedAt }` — teams scoped to the
+    tournament. A tournament player can be assigned to only one team through the UI.
+  - `fixtures/{id}`: `{ homeTeamId, homeTeamName, awayTeamId, awayTeamName, date,
+    startTime, venueId, venueName, status, notes, homeScore, awayScore, manOfTheMatchId,
+    resultNotes, goals: [{ scorerId, assistId }], cards: [{ playerId, type: "yellow" | "red" }],
+    createdAt, updatedAt }`.
+  - `collections/{id}`: `{ playerId, payerName, date, amount, paymentMethod, notes,
+    createdAt, updatedAt }` — tournament-specific payments and the source of its total.
+  - `billPayments/{id}`: `{ payeeName, date, amount, paymentMethod, notes, createdAt,
+    updatedAt }` — tournament-specific expenses, used with collections to calculate balance.
 - `financeCollections/{id}`: `{ transactionId, voucher, playerId, payerName, collectionDate,
   paymentMonth, amount, receivedInto, comments, createdAt, updatedAt }` — one row per player
   payment collection, shown on the **Collections (+)** page. `transactionId` (`COL...`) and
@@ -58,22 +73,41 @@ club/tournament rules, player roster, and finance tracking.
   `financeTransactions` docs once totals reconcile.
 
 Only verified, signed-in users can read `players`/`financeTransactions`/`financeCollections`/
-`financeBillPayments`. Only admins/moderators can write to them (players can also create/edit
-their own player record, excluding `status`/`teamsId`). Every signed-in user can
-read/create their own `users/{uid}` profile.
+`financeBillPayments` and tournament data. Administrators and moderators can create/update
+managed records. Only administrators can delete player profiles, match days, venues, typed
+finance records, tournaments, teams, fixtures, and tournament collections. Existing players
+can edit their own player record except `status`/`teamsId`. Legacy finance compatibility rows
+and Firebase Authentication accounts are not deleted by these client screens.
 
-## 3. Registration & login flow
+## 3. Account provisioning and sign-in flow
 
-1. A new user registers with name/email/password plus playing position/mobile/jersey number.
-2. A confirmation email is sent automatically (Firebase Auth), and a linked `players/{id}`
-   record is created from the signup data.
-3. The account is inactive (blocked from the dashboard) until the user clicks
-   the confirmation link and returns to the "I've confirmed, continue" step.
-4. Once verified, the user lands on the Dashboard with `role: "player"` by
-   default (view-only for Players/Finance) until an admin promotes them to
-   `"moderator"` or `"admin"`.
+1. An administrator provisions the user's Email/Password account in Firebase Authentication.
+2. An administrator or moderator adds the matching player profile from **Players → Add Player**,
+  using the same email address as the authentication account.
+3. The user signs in through the portal. There is no public registration page; password reset
+  remains available from Sign In.
+4. On first sign-in, a missing `users/{uid}` role document is created with `role: "player"`.
+5. If a linked player profile exists but is incomplete, the user completes their personal
+  details and mandatory password change before entering the dashboard. If no linked player
+  exists, the user can enter the portal and My Player Profile directs them to contact staff.
 
-## 4. Run locally
+## 4. Tournament workflow
+
+1. An administrator or moderator opens **Tournaments → Create Tournament**.
+2. Staff selects the tournament date/time, an existing venue, lifecycle status, format,
+  participating players from Player List, and any other information.
+3. The tournament appears in the list at `#/tournaments`; **Manage** opens its isolated
+  workspace at `#/tournaments/manage/<id>`.
+4. **Teams** assigns tournament players and staff can drag players between teams,
+  **Fixtures** schedules two teams at an existing venue, **Score** records fixture results,
+  player of the match, scorers, and assists, and **Tournament Finance** records player
+  collections and bill payments with running totals.
+5. Verified players see the same list and details without create/edit/delete controls.
+
+Tournament statuses are Upcoming, Registration/Open, Team Formation, Fixture Created,
+Ongoing, Completed, and Cancelled. The old `#/tournament-2026` route redirects to the list.
+
+## 5. Run locally
 
 Because ES modules and Firebase requests need an HTTP origin, use any static server:
 
@@ -83,7 +117,7 @@ python3 -m http.server 8000
 
 Then open <http://localhost:8000>.
 
-## 5. Deploy to GitHub Pages
+## 6. Deploy to GitHub Pages
 
 Push this repository to `<username>.github.io` (root) or any repo with GitHub
 Pages enabled, serving from the `main` branch root. All asset paths are relative.

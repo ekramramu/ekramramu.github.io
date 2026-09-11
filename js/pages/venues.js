@@ -2,7 +2,7 @@ import { addVenue, deleteVenue, listVenues, updateVenue } from "../data.js";
 import { escapeHtml } from "../utils.js";
 import { closeModal, openModal } from "../modal.js";
 
-function venueRow(venue, isAdmin) {
+function venueRow(venue, canManage, canDelete) {
   return `
     <tr data-id="${escapeHtml(venue.id)}">
       <td>
@@ -11,10 +11,10 @@ function venueRow(venue, isAdmin) {
       </td>
       <td>${escapeHtml(venue.address || "—")}</td>
       <td><span class="badge badge-${venue.status === "inactive" ? "inactive" : "active"}">${venue.status === "inactive" ? "Inactive" : "Active"}</span></td>
-      ${isAdmin ? `
+      ${canManage ? `
         <td class="table-actions">
           <button class="btn btn-small btn-secondary" data-action="edit" type="button">Edit</button>
-          <button class="btn btn-small btn-danger" data-action="delete" type="button">Delete</button>
+          ${canDelete ? `<button class="btn btn-small btn-danger" data-action="delete" type="button">Delete</button>` : ""}
         </td>
       ` : ""}
     </tr>
@@ -51,35 +51,36 @@ function venueFormHtml(venue = {}) {
 }
 
 export async function renderVenuesPage(container, { role }) {
-  const isAdmin = role === "admin" || role === "moderator";
+  const canManage = role === "admin" || role === "moderator";
+  const canDelete = role === "admin";
   container.innerHTML = `
     <div class="page-header">
       <h1 class="page-title"><span class="card-icon">▤</span> Venues</h1>
-      ${isAdmin ? `<button class="btn btn-primary" id="add-venue-button" type="button">+ Add Venue</button>` : ""}
+      ${canManage ? `<button class="btn btn-primary" id="add-venue-button" type="button">+ Add Venue</button>` : ""}
     </div>
     <div class="table-wrap">
       <table class="data-table">
         <thead>
           <tr>
             <th>Venue Name</th><th>Address</th><th>Status</th>
-            ${isAdmin ? "<th>Action</th>" : ""}
+            ${canManage ? "<th>Action</th>" : ""}
           </tr>
         </thead>
         <tbody id="venues-tbody">
-          <tr><td colspan="${isAdmin ? 4 : 3}" class="empty-state">Loading venues…</td></tr>
+          <tr><td colspan="${canManage ? 4 : 3}" class="empty-state">Loading venues…</td></tr>
         </tbody>
       </table>
     </div>
   `;
 
   const tbody = document.getElementById("venues-tbody");
-  const colSpan = isAdmin ? 4 : 3;
+  const colSpan = canManage ? 4 : 3;
 
   async function refresh() {
     try {
       const venues = await listVenues();
       tbody.innerHTML = venues.length
-        ? venues.map((venue) => venueRow(venue, isAdmin)).join("")
+        ? venues.map((venue) => venueRow(venue, canManage, canDelete)).join("")
         : `<tr><td colspan="${colSpan}" class="empty-state">No venues yet.</td></tr>`;
       wireRowActions(venues);
     } catch (error) {
@@ -89,7 +90,7 @@ export async function renderVenuesPage(container, { role }) {
   }
 
   function wireRowActions(venues) {
-    if (!isAdmin) return;
+    if (!canManage) return;
     tbody.querySelectorAll("tr[data-id]").forEach((row) => {
       const id = row.dataset.id;
       const venue = venues.find((item) => item.id === id);
@@ -143,7 +144,7 @@ export async function renderVenuesPage(container, { role }) {
     });
   }
 
-  if (isAdmin) {
+  if (canManage) {
     document.getElementById("add-venue-button").addEventListener("click", () => openForm());
   }
 

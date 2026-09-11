@@ -191,6 +191,82 @@ button, input, select, textarea { font-family: inherit; }
 .date-chip { padding: 9px 13px; border: 1px solid var(--success); border-radius: 999px; color: var(--success); font: 600 .78rem var(--mono); white-space: nowrap; }
 .rating-value { font-family: var(--mono); }
 
+.tournament-about { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(320px, .75fr); gap: 36px; align-items: center; margin-bottom: 24px; padding: 26px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.tournament-about-copy h2 { margin: 0; font-size: 1.25rem; }
+.tournament-about-copy p { max-width: 620px; margin: 9px 0 18px; color: var(--muted); font-size: .9rem; line-height: 1.7; }
+.tournament-facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px 24px; margin: 0; }
+.tournament-facts div { min-width: 0; }
+.tournament-facts dt { margin-bottom: 5px; color: var(--muted); font: 600 .67rem var(--mono); text-transform: uppercase; }
+.tournament-facts dd { margin: 0; color: var(--ink); font: 700 .95rem var(--display); }
+
+.tournament-list { display: flex; flex-direction: column; gap: 12px; }
+.tournament-list-card { display: grid; grid-template-columns: 92px minmax(0, 1fr) auto; gap: 20px; align-items: stretch; padding: 18px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); animation: rise-in .35s both; }
+.tournament-card-date { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 86px; padding: 10px; border-right: 1px solid var(--line); text-align: center; }
+.tournament-card-date strong { color: var(--accent); font: 700 1.8rem var(--mono); }
+.tournament-card-date span { color: var(--muted); font: 600 .68rem var(--mono); }
+.tournament-card-body { min-width: 0; }
+.tournament-card-title { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.tournament-card-title h2 { margin: 0; font-size: 1.05rem; }
+.tournament-card-title p { margin: 5px 0 0; color: var(--muted); font-size: .8rem; }
+.tournament-card-stats { display: flex; flex-wrap: wrap; gap: 16px; margin-top: 18px; color: var(--muted); font: 600 .68rem var(--mono); }
+.tournament-card-stats strong { color: var(--ink); font-size: .78rem; }
+.tournament-card-actions { display: flex; flex-direction: column; justify-content: center; gap: 8px; min-width: 90px; }
+.tournament-empty { padding: 44px 24px; border: 1px dashed var(--line); text-align: center; }
+.tournament-empty h2 { margin: 0; font-size: 1.05rem; }
+.tournament-empty p { margin: 8px auto 18px; max-width: 520px; color: var(--muted); font-size: .85rem; }
+.tournament-heading-actions { display: flex; align-items: center; gap: 10px; }
+.tournament-tabs { overflow-x: auto; }
+.tournament-tabs .tab-button { flex: 0 0 auto; }
+.tournament-summary-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 1px; margin-bottom: 20px; border: 1px solid var(--line); background: var(--line); }
+.tournament-summary-grid div { min-width: 0; padding: 16px; background: var(--surface); }
+.tournament-summary-grid span { display: block; margin-bottom: 6px; color: var(--muted); font: 600 .65rem var(--mono); text-transform: uppercase; }
+.tournament-summary-grid strong { display: block; overflow: hidden; font-size: .95rem; text-overflow: ellipsis; }
+.tournament-overview-grid { display: grid; grid-template-columns: minmax(0, .8fr) minmax(0, 1.2fr); gap: 20px; }
+.tournament-section { padding: 22px 0; border-top: 1px solid var(--line); }
+.tournament-section h2 { margin: 0 0 16px; font-size: 1rem; }
+.detail-list { margin: 0; }
+.detail-list div { display: grid; grid-template-columns: 120px 1fr; gap: 14px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.detail-list dt { color: var(--muted); font: 600 .68rem var(--mono); text-transform: uppercase; }
+.detail-list dd { margin: 0; font-size: .85rem; overflow-wrap: anywhere; }
+.roster-chip-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.roster-chip-list > span { display: flex; flex-direction: column; padding: 10px 12px; border-left: 3px solid var(--success); background: var(--surface); font-size: .82rem; }
+.roster-chip-list small { margin-top: 2px; color: var(--muted); font: 500 .65rem var(--mono); }
+.section-toolbar { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; margin-bottom: 18px; }
+.section-toolbar h2 { margin: 0; font-size: 1rem; }
+.section-toolbar p { margin: 5px 0 0; color: var(--muted); font-size: .8rem; }
+.managed-team-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.managed-team-card { padding: 20px; border-top: 3px solid var(--success); background: var(--surface); }
+.managed-team-card h3 { margin: 0; font-size: 1rem; }
+.managed-team-card ul { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; margin: 16px 0; padding: 0; list-style: none; }
+.managed-team-card li { padding: 8px 10px; background: var(--paper); font-size: .78rem; }
+.unassigned-players { display: grid; grid-template-columns: 220px minmax(0, 1fr); align-items: start; gap: 20px; margin-bottom: 16px; padding: 18px 20px; border: 1px dashed var(--line); background: var(--surface); }
+.unassigned-players h2 { margin: 5px 0 0; font-size: 1rem; }
+.team-drop-zone { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; min-height: 42px; margin: 16px 0; padding: 0; list-style: none; transition: background .15s, outline-color .15s; }
+.unassigned-players .team-drop-zone { margin: 0; }
+.team-drop-zone.drag-over { outline: 2px dashed var(--accent); background: var(--accent-soft); }
+.team-player { padding: 8px 10px; background: var(--paper); cursor: grab; font-size: .78rem; }
+.drop-hint { color: var(--muted); font-style: italic; }
+.score-cell { font: 700 1rem var(--mono); }
+.goal-row, .card-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 38px; gap: 8px; margin-bottom: 8px; }
+.results-summary { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1px; margin-bottom: 16px; border: 1px solid var(--line); background: var(--line); }
+.results-summary div { padding: 14px; background: var(--surface); }
+.results-summary span, .result-summary-list span { display: block; color: var(--muted); font: 600 .68rem var(--mono); }
+.result-summary-list { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.result-summary-list li { padding: 12px; border-left: 3px solid var(--success); background: var(--surface); }
+.result-summary-list strong { display: block; margin-bottom: 5px; }
+.selection-fieldset { min-width: 0; margin: 0; padding: 0; border: 0; }
+.selection-fieldset legend { width: 100%; margin-bottom: 10px; color: var(--ink); font: 600 .82rem var(--display); }
+.selection-fieldset legend span { margin-left: 6px; color: var(--muted); font: 500 .68rem var(--mono); }
+.selection-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; max-height: 250px; overflow-y: auto; padding: 2px; }
+.selection-option { display: flex; align-items: center; gap: 10px; min-width: 0; padding: 10px; border: 1px solid var(--line); border-radius: 6px; cursor: pointer; }
+.selection-option:has(input:checked) { border-color: var(--success); background: var(--success-soft); }
+.selection-option.disabled { opacity: .45; cursor: not-allowed; }
+.selection-option input { flex: 0 0 auto; accent-color: var(--success); }
+.selection-option span { min-width: 0; }
+.selection-option strong, .selection-option small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.selection-option strong { font-size: .78rem; }
+.selection-option small { margin-top: 2px; color: var(--muted); font: 500 .64rem var(--mono); }
+
 .team-grid { display: grid; gap: 16px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .team-card { padding: 22px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); animation: rise-in .5s both; }
 .team-card:nth-child(2) { animation-delay: .05s; }
@@ -422,11 +498,27 @@ button, input, select, textarea { font-family: inherit; }
   .dashboard-intro { align-items: flex-start; flex-direction: column; }.dashboard-grid { grid-template-columns: 1fr; }.match-card { grid-column: auto; }.match-actions { padding: 16px 0 0; border-top: 1px solid var(--line); border-left: 0; }
   .matchday-card { grid-template-columns: 1fr; }.matchday-card .match-actions { padding: 16px 0 0; border-top: 1px solid var(--line); border-left: 0; }
   .rules-grid { grid-template-columns: 1fr; }
+  .tournament-about { grid-template-columns: 1fr; gap: 24px; }
+  .tournament-list-card { grid-template-columns: 72px minmax(0, 1fr); }
+  .tournament-card-actions { grid-column: 1 / -1; flex-direction: row; justify-content: flex-end; }
+  .tournament-summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .tournament-overview-grid, .managed-team-grid { grid-template-columns: 1fr; }
+  .unassigned-players { grid-template-columns: 1fr; }
   .team-grid { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 560px) {
   .dashboard-side-stats { grid-template-columns: 1fr 1fr; }.match-card { grid-template-columns: 1fr; }.match-counts { grid-template-columns: repeat(2, 1fr); }.balance-actions { grid-template-columns: 1fr; }
+  .tournament-list-card { grid-template-columns: 1fr; gap: 12px; }
+  .tournament-card-date { align-items: flex-start; min-height: 0; padding: 0 0 10px; border-right: 0; border-bottom: 1px solid var(--line); text-align: left; }
+  .tournament-card-date strong { font-size: 1.15rem; }
+  .tournament-card-title, .section-toolbar { align-items: flex-start; flex-direction: column; }
+  .tournament-card-stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .tournament-card-actions .btn, .section-toolbar .btn { flex: 1; width: 100%; }
+  .tournament-summary-grid, .roster-chip-list, .managed-team-card ul, .selection-grid { grid-template-columns: 1fr; }
+  .goal-row, .card-row, .team-drop-zone, .results-summary { grid-template-columns: 1fr; }
+  .detail-list div { grid-template-columns: 1fr; gap: 5px; }
+  .modal-overlay { padding: 12px; }
 }
 
 @media (prefers-color-scheme: dark) {

@@ -20,7 +20,8 @@ export function navigate(path) {
 
 export function getCurrentPath() {
   const hash = window.location.hash.replace(/^#/, "");
-  return hash || "/dashboard";
+  const path = hash.split("?")[0] || "/dashboard";
+  return path.startsWith("/tournaments/manage/") ? "/tournaments/manage" : path;
 }
 
 function handleRouteChange() {

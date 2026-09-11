@@ -1,11 +1,11 @@
-import { addPlayer, deletePlayer, ensurePlayerProfile, listMatchDays, listMatchResponses, listPlayers, updatePlayer } from "../data.js";
+import { addPlayer, deletePlayer, listMatchDays, listMatchResponses, listPlayers, listUserProfiles, revokePortalAccessByEmail, updatePlayer, updateUserRole } from "../data.js";
 import { escapeHtml, formatDate, friendlyAuthError } from "../utils.js";
 import { changePassword, updateUserPreferences } from "../auth.js";
 import { navigate } from "../router.js";
 
 export const POSITION_OPTIONS = ["Unassigned", "Goalkeeper", "Defender", "Midfielder", "Forward"];
 
-function playerRow(player, isAdmin) {
+function playerRow(player, canManage, canDelete, userProfile, canChangeRole) {
   return `
     <tr data-id="${escapeHtml(player.id)}">
       <td>${escapeHtml(player.name)}</td>
@@ -15,10 +15,11 @@ function playerRow(player, isAdmin) {
       <td>${escapeHtml(player.jerseyNumber ?? "—")}</td>
       <td>${escapeHtml(player.phone || "—")}</td>
       <td><span class="badge badge-${player.status === "inactive" ? "inactive" : "active"}">${player.status === "inactive" ? "Inactive" : "Active"}</span></td>
-      ${isAdmin ? `
+      ${canManage ? `
         <td class="table-actions">
           <button class="btn btn-small btn-secondary" data-action="edit" type="button">Edit</button>
-          <button class="btn btn-small btn-danger" data-action="delete" type="button">Delete</button>
+          ${canChangeRole && userProfile && !userProfile.disabled ? `<button class="btn btn-small btn-secondary" data-action="role" type="button">${userProfile.role === "moderator" ? "Remove moderator" : "Make moderator"}</button>` : ""}
+          ${canDelete ? `<button class="btn btn-small btn-danger" data-action="delete" type="button">Delete</button>` : ""}
         </td>
       ` : ""}
     </tr>
@@ -125,30 +126,12 @@ export function readPlayerForm(form) {
   return payload;
 }
 
-function adminEditFieldsHtml(player) {
-  return `
-    <p class="photo-upload-hint" style="margin-bottom: 14px;">Editing <strong>${escapeHtml(player.name || "")}</strong> (${escapeHtml(player.email || "no email on file")})</p>
-    <div class="form-grid">
-      <label class="form-field">
-        <span>Status</span>
-        <select name="status">
-          <option value="active" ${player.status !== "inactive" ? "selected" : ""}>Active</option>
-          <option value="inactive" ${player.status === "inactive" ? "selected" : ""}>Inactive</option>
-        </select>
-      </label>
-      <label class="form-field">
-        <span>Teams ID</span>
-        <input type="text" name="teamsId" placeholder="Teams ID" value="${escapeHtml(player.teamsId || "")}" />
-      </label>
-    </div>
-  `;
-}
-
 function playerFormHtml(player = {}) {
   return `
     <form class="inline-form" id="player-form">
       <input type="hidden" name="id" value="${escapeHtml(player.id || "")}" />
-      ${adminEditFieldsHtml(player)}
+      ${photoUploadHtml(player)}
+      ${playerFieldsHtml(player)}
       <p class="auth-error" id="player-form-error" role="alert" hidden></p>
       <div class="auth-actions">
         <button class="btn btn-primary" type="submit">Save changes</button>
@@ -158,12 +141,13 @@ function playerFormHtml(player = {}) {
   `;
 }
 
-export async function renderPlayersPage(container, { role }) {
-  const isAdmin = role === "admin" || role === "moderator";
+export async function renderPlayersPage(container, { role, email }) {
+  const canManage = role === "admin" || role === "moderator";
+  const canDelete = role === "admin";
   container.innerHTML = `
     <div class="page-header">
       <h1 class="page-title">Players</h1>
-      ${isAdmin ? `<button class="btn btn-primary" id="add-player-button" type="button">+ Add player</button>` : ""}
+      ${canManage ? `<button class="btn btn-primary" id="add-player-button" type="button">+ Add player</button>` : ""}
     </div>
     <div id="player-form-slot"></div>
     <div class="table-wrap">
@@ -171,7 +155,7 @@ export async function renderPlayersPage(container, { role }) {
         <thead>
           <tr>
             <th>Name</th><th>Rating</th><th>Tournament team</th><th>Position</th><th>Jersey #</th><th>Phone</th><th>Status</th>
-            ${isAdmin ? "<th>Actions</th>" : ""}
+            ${canManage ? "<th>Actions</th>" : ""}
           </tr>
         </thead>
         <tbody id="players-tbody">
@@ -183,30 +167,48 @@ export async function renderPlayersPage(container, { role }) {
 
   const tbody = document.getElementById("players-tbody");
   const formSlot = document.getElementById("player-form-slot");
-  const colSpan = isAdmin ? 8 : 7;
+  const colSpan = canManage ? 8 : 7;
 
   async function refresh() {
     try {
-      const players = await listPlayers();
+      const [players, userProfiles] = await Promise.all([
+        listPlayers(),
+        role === "admin" ? listUserProfiles() : Promise.resolve([])
+      ]);
+      const profilesByEmail = new Map(userProfiles.map((item) => [(item.email || "").toLowerCase(), item]));
       tbody.innerHTML = players.length
-        ? players.map((player) => playerRow(player, isAdmin)).join("")
+        ? players.map((player) => playerRow(
+          player,
+          canManage,
+          canDelete && (player.email || "").toLowerCase() !== (email || "").toLowerCase(),
+          profilesByEmail.get((player.email || "").toLowerCase()),
+          role === "admin"
+        )).join("")
         : `<tr><td colspan="${colSpan}" class="empty-state">No players yet.</td></tr>`;
-      wireRowActions(players);
+      wireRowActions(players, profilesByEmail);
     } catch (error) {
       tbody.innerHTML = `<tr><td colspan="${colSpan}" class="empty-state">Unable to load players.</td></tr>`;
       console.error("Unable to load players", error);
     }
   }
 
-  function wireRowActions(players) {
-    if (!isAdmin) return;
+  function wireRowActions(players, profilesByEmail) {
+    if (!canManage) return;
     tbody.querySelectorAll("tr[data-id]").forEach((row) => {
       const id = row.dataset.id;
       const player = players.find((item) => item.id === id);
       row.querySelector("[data-action=edit]")?.addEventListener("click", () => openForm(player));
+      row.querySelector("[data-action=role]")?.addEventListener("click", async () => {
+        const userProfile = profilesByEmail.get((player.email || "").toLowerCase());
+        const role = userProfile.role === "moderator" ? "player" : "moderator";
+        if (!window.confirm(`${role === "moderator" ? "Make" : "Remove"} ${player.name} ${role === "moderator" ? "a moderator" : "as moderator"}?`)) return;
+        await updateUserRole(userProfile.id, role);
+        await refresh();
+      });
       row.querySelector("[data-action=delete]")?.addEventListener("click", async () => {
-        if (!window.confirm(`Remove ${player.name}?`)) return;
+        if (!window.confirm(`Remove ${player.name}'s player profile and revoke their portal access? Their Firebase Authentication account must be deleted separately in Firebase Console.`)) return;
         try {
+          await revokePortalAccessByEmail(player.email);
           await deletePlayer(id);
           await refresh();
         } catch (error) {
@@ -224,6 +226,7 @@ export async function renderPlayersPage(container, { role }) {
     formSlot.innerHTML = playerFormHtml(player || {});
     const form = document.getElementById("player-form");
     const errorEl = document.getElementById("player-form-error");
+    wirePhotoUpload(form);
     document.getElementById("player-form-cancel").addEventListener("click", closeForm);
     form.addEventListener("submit", async (event) => {
       event.preventDefault();
@@ -243,7 +246,7 @@ export async function renderPlayersPage(container, { role }) {
     });
   }
 
-  if (isAdmin) {
+  if (canManage) {
     document.getElementById("add-player-button").addEventListener("click", () => navigate("/players/new"));
   }
 
@@ -352,13 +355,15 @@ export async function renderMyProfilePage(container, { email, uid, role, profile
   }
 
   if (!mine) {
-    try {
-      mine = await ensurePlayerProfile({ ...profile, email, name: profile?.name || email });
-    } catch (error) {
-      root.innerHTML = `<p class="empty-state">Unable to load your profile.</p>`;
-      console.error("Unable to create my player profile", error);
-      return;
-    }
+    const canManage = role === "admin" || role === "moderator";
+    root.innerHTML = `
+      <div class="empty-state">
+        <h2>Player profile not found</h2>
+        <p>${canManage ? "Create a new player record with your signed-in email address to restore this profile." : "Contact an administrator or moderator to add your player profile."}</p>
+        ${canManage ? `<a class="btn btn-primary" href="#/players/new">Create my player profile</a>` : ""}
+      </div>
+    `;
+    return;
   }
 
   const matchesPlayed = await countMatchesPlayed(uid).catch(() => 0);

@@ -1,5 +1,4 @@
 import {
-  createUserWithEmailAndPassword,
   EmailAuthProvider,
   onAuthStateChanged,
   reauthenticateWithCredential,
@@ -7,34 +6,13 @@ import {
   sendPasswordResetEmail,
   signInWithEmailAndPassword,
   signOut,
-  updatePassword,
-  updateProfile
+  updatePassword
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import { doc, getDoc, setDoc, updateDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-lite.js";
 import { auth, db } from "./firebase.js";
 
 export function watchAuthState(callback) {
   return onAuthStateChanged(auth, callback);
-}
-
-export async function registerAccount({ name, email, password }) {
-  const credential = await createUserWithEmailAndPassword(auth, email, password);
-  await updateProfile(credential.user, { displayName: name });
-  await sendEmailVerification(credential.user, {
-    url: `${window.location.origin}${window.location.pathname}#/login`
-  });
-  try {
-    await setDoc(doc(db, "users", credential.user.uid), {
-      name,
-      email,
-      role: "player",
-      createdAt: serverTimestamp()
-    });
-  } catch (error) {
-    // Non-fatal: ensureUserProfile() self-heals this on next sign-in.
-    console.error("Unable to save user profile, will retry on next sign-in", error);
-  }
-  return credential.user;
 }
 
 export async function loginAccount({ email, password }) {
@@ -82,9 +60,8 @@ export async function getUserProfile(uid) {
   return snapshot.exists() ? snapshot.data() : null;
 }
 
-// Creates the Firestore profile doc if it's missing (e.g. it failed to save
-// during registration because Firestore wasn't set up yet). Always role:"player";
-// role escalation to "moderator"/"admin" requires an existing admin per firestore.rules.
+// Authentication accounts are provisioned outside the portal. Create a matching
+// role document on first sign-in when one does not exist yet.
 export async function ensureUserProfile(user) {
   const ref = doc(db, "users", user.uid);
   const snapshot = await getDoc(ref);

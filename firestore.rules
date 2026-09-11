@@ -20,8 +20,8 @@ service cloud.firestore {
         && userRole() == 'admin';
     }
 
-    // Moderators get the same day-to-day content permissions as admins
-    // (players/finance/match days/venues) but never manage user roles.
+    // Moderators can create/update day-to-day content but cannot delete records
+    // or manage user roles. Destructive content operations are admin-only.
     function isModerator() {
       return isVerified()
         && exists(/databases/$(database)/documents/users/$(request.auth.uid))
@@ -36,7 +36,8 @@ service cloud.firestore {
     // at signup and can only be escalated by an existing admin, never by the
     // user themselves.
     match /users/{userId} {
-      allow get: if isAdmin() || (isVerified() && request.auth.uid == userId);
+      allow get, list: if isAdmin();
+      allow get: if isVerified() && request.auth.uid == userId;
       allow create: if isSignedIn()
         && request.auth.uid == userId
         && request.resource.data.role == 'player';
@@ -46,55 +47,92 @@ service cloud.firestore {
       allow delete: if false;
     }
 
-    // Any verified member can view the roster. Admins/moderators can edit anything.
-    // A player can also create/edit their own record (matched by email) but
-    // may not touch status/teamsId — those stay staff-only fields.
+    // Any verified member can view the roster. Only admins/moderators can add
+    // profiles. Players may edit their own profile but cannot touch staff fields.
     match /players/{playerId} {
       allow read: if isVerified();
-      allow create: if isStaff()
-        || (isSignedIn() && request.resource.data.email == request.auth.token.email);
+      allow create: if isStaff();
       allow update: if isStaff()
         || (isVerified()
             && resource.data.email == request.auth.token.email
             && !request.resource.data.diff(resource.data).affectedKeys()
               .hasAny(['status', 'teamsId']));
-      allow delete: if isStaff();
+      allow delete: if isAdmin();
     }
 
-    // Any verified member can view finance records; only staff can edit them.
+    // Any verified member can view finance records. Staff can create/update;
+    // deletion is administrator-only.
     // financeTransactions is the legacy ledger kept read-only for the Collections/
     // Bill Payment compatibility period; new writes go to the typed collections below.
     match /financeTransactions/{transactionId} {
       allow read: if isVerified();
-      allow write: if isStaff();
+      allow create, update: if isStaff();
+      allow delete: if isAdmin();
     }
 
     match /financeCollections/{collectionId} {
       allow read: if isVerified();
-      allow write: if isStaff();
+      allow create, update: if isStaff();
+      allow delete: if isAdmin();
     }
 
     match /financeBillPayments/{billPaymentId} {
       allow read: if isVerified();
-      allow write: if isStaff();
+      allow create, update: if isStaff();
+      allow delete: if isAdmin();
     }
 
-    // Match day schedule is staff-managed; every verified member can view it.
+    // Match day schedule is staff-managed; only admins delete match days.
     match /matchDays/{matchId} {
       allow read: if isVerified();
-      allow write: if isStaff();
+      allow create, update: if isStaff();
+      allow delete: if isAdmin();
 
       // Each member can only read/write their own attendance response.
       match /rsvps/{rsvpId} {
         allow read: if isVerified();
-        allow write: if isVerified() && request.auth.uid == rsvpId;
+        allow create, update: if isVerified() && request.auth.uid == rsvpId;
+        allow delete: if isAdmin() || (isVerified() && request.auth.uid == rsvpId);
       }
     }
 
-    // Venue directory used by match days; only staff can manage it.
+    // Venue directory is staff-managed; only admins delete venues.
     match /venues/{venueId} {
       allow read: if isVerified();
-      allow write: if isStaff();
+      allow create, update: if isStaff();
+      allow delete: if isAdmin();
+    }
+
+    // Tournaments are visible to every verified member. Staff create/update;
+    // only administrators delete aggregate or child records.
+    match /tournaments/{tournamentId} {
+      allow read: if isVerified();
+      allow create, update: if isStaff();
+      allow delete: if isAdmin();
+
+      match /teams/{teamId} {
+        allow read: if isVerified();
+        allow create, update: if isStaff();
+        allow delete: if isAdmin();
+      }
+
+      match /fixtures/{fixtureId} {
+        allow read: if isVerified();
+        allow create, update: if isStaff();
+        allow delete: if isAdmin();
+      }
+
+      match /collections/{collectionId} {
+        allow read: if isVerified();
+        allow create, update: if isStaff();
+        allow delete: if isAdmin();
+      }
+
+      match /billPayments/{paymentId} {
+        allow read: if isVerified();
+        allow create, update: if isStaff();
+        allow delete: if isAdmin();
+      }
     }
 
     match /{document=**} {

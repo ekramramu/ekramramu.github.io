@@ -6,7 +6,7 @@ import { photoUploadHtml, playerFieldsHtml, readPlayerForm, wirePhotoUpload } fr
 // A player counts as onboarded once these are on file and the one-time form was submitted.
 export function needsProfileCompletion(profile, player) {
   if (profile?.profileCompleted) return false;
-  if (!player) return true;
+  if (!player) return false;
   return !player.name || !player.phone || !player.position || player.jerseyNumber == null;
 }
 

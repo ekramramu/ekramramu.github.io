@@ -121,7 +121,7 @@ export async function renderDashboardPage(container, { profile, email, role, uid
         <h1 class="page-title">Welcome back, ${displayName}</h1>
         <p class="page-subtitle">Here is what is happening with the club.</p>
       </div>
-      <a class="btn btn-primary" href="#/tournament-2026">View tournament</a>
+      <a class="btn btn-primary" href="#/tournaments">View tournaments</a>
     </div>
     <div class="dashboard-grid">
       <section class="balance-card">
