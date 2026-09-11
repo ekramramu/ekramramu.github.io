@@ -69,10 +69,6 @@ function matchFormHtml(match = {}, venues = []) {
             ${venues.map((venue) => `<option value="${escapeHtml(venue.id)}" ${match.venueId === venue.id ? "selected" : ""}>${escapeHtml(venue.name)}</option>`).join("")}
           </select>
         </label>
-        <label class="form-field form-field-wide">
-          <span>Match Result</span>
-          <input type="text" name="result" value="${escapeHtml(match.result || "")}" placeholder="e.g. SDFC 3 - 2 Opponent" />
-        </label>
       </div>
       <p class="auth-error" id="match-form-error" role="alert" hidden></p>
       <div class="auth-actions modal-actions">
@@ -83,19 +79,24 @@ function matchFormHtml(match = {}, venues = []) {
   `;
 }
 
+function resultFormHtml(match) {
+  return `<div class="modal-header"><h2>Match Result</h2><button class="icon-button" data-close-modal type="button" aria-label="Close">✕</button></div><form id="match-result-form"><div class="form-grid"><label class="form-field form-field-wide"><span>${escapeHtml(match.title || "Match day")}</span><input value="${escapeHtml(formatDate(match.date))}" disabled /></label><label class="form-field"><span>Status</span><select name="status"><option value="Upcoming" ${match.status === "Upcoming" ? "selected" : ""}>Upcoming</option><option value="Completed" ${match.status === "Completed" ? "selected" : ""}>Completed</option><option value="Cancelled" ${match.status === "Cancelled" ? "selected" : ""}>Cancelled</option></select></label><label class="form-field form-field-wide"><span>Result</span><input type="text" name="result" value="${escapeHtml(match.result || "")}" placeholder="e.g. SDFC 3 - 2 Opponent" /></label></div><p class="auth-error" id="match-result-error" role="alert" hidden></p><div class="auth-actions modal-actions"><button class="btn btn-secondary" data-close-modal type="button">Cancel</button><button class="btn btn-primary" type="submit">Save Result</button></div></form>`;
+}
+
 function matchCard(match, { totalPlayers, responses, uid, canManage, canDelete }) {
   const inCount = responses.filter((item) => item.response === "in").length;
   const outCount = responses.filter((item) => item.response === "out").length;
   const pendingCount = Math.max(totalPlayers - inCount - outCount, 0);
   const mine = responses.find((item) => item.id === uid);
   const isPast = toStamp(match.date, match.endTime || match.startTime).getTime() < Date.now();
-  const statusLabel = isPast ? "Completed" : "Upcoming";
+  const statusLabel = match.status || (isPast ? "Completed" : "Upcoming");
 
   return `
     <article class="matchday-card" data-id="${escapeHtml(match.id)}">
       <div class="match-card-main">
-        <h2>${escapeHtml(match.title || "Match day")} <span class="badge badge-${isPast ? "inactive" : "active"}">${statusLabel}</span></h2>
+        <h2>${escapeHtml(match.title || "Match day")} <span class="badge badge-${statusLabel === "Completed" ? "active" : statusLabel === "Cancelled" ? "inactive" : "moderator"}">${escapeHtml(statusLabel)}</span></h2>
         <p class="match-meta">◷ ${formatDate(match.date)}, ${escapeHtml(match.startTime || "—")}${match.endTime ? ` – ${escapeHtml(match.endTime)}` : ""} &nbsp; · &nbsp; ◉ ${escapeHtml(match.venueName || "Venue TBC")}</p>
+        ${match.result ? `<p class="match-result"><strong>Result:</strong> ${escapeHtml(match.result)}</p>` : ""}
         <div class="match-counts">
           <div><strong>${totalPlayers}</strong><span>Total</span></div>
           <div><strong>${inCount}</strong><span>Confirmed</span></div>
@@ -113,6 +114,7 @@ function matchCard(match, { totalPlayers, responses, uid, canManage, canDelete }
         ${canManage ? `
           <div class="table-actions">
             <button class="btn btn-small btn-secondary" data-action="edit" type="button">Edit</button>
+            <button class="btn btn-small btn-primary" data-action="result" type="button">${match.result ? "Update Result" : "Add Result"}</button>
             ${canDelete ? `<button class="btn btn-small btn-danger" data-action="delete" type="button">Delete</button>` : ""}
           </div>
         ` : ""}
@@ -178,6 +180,7 @@ export async function renderMatchDaysPage(container, { role, uid, player }) {
         });
       });
       card.querySelector("[data-action=edit]")?.addEventListener("click", () => openForm(match));
+      card.querySelector("[data-action=result]")?.addEventListener("click", () => openResultForm(match));
       card.querySelector("[data-action=delete]")?.addEventListener("click", async () => {
         if (!window.confirm(`Delete ${match.title}?`)) return;
         try {
@@ -231,8 +234,7 @@ export async function renderMatchDaysPage(container, { role, uid, player }) {
         endTime: String(formData.get("endTime") || ""),
         venueId: venueId || null,
         venueName: venue?.name || "",
-        venueAddress: venue?.address || "",
-        result: String(formData.get("result") || "").trim()
+        venueAddress: venue?.address || ""
       };
       if (!payload.title || !payload.date || !payload.startTime) {
         errorEl.textContent = "Title, date, and start time are required.";
@@ -251,6 +253,33 @@ export async function renderMatchDaysPage(container, { role, uid, player }) {
         errorEl.textContent = "Unable to save match day. Please try again.";
         errorEl.hidden = false;
         console.error("Unable to save match day", error);
+      }
+    });
+  }
+
+  function openResultForm(match) {
+    const overlay = openModal(resultFormHtml(match));
+    const form = overlay.querySelector("#match-result-form");
+    const errorEl = overlay.querySelector("#match-result-error");
+    overlay.querySelectorAll("[data-close-modal]").forEach((button) => button.addEventListener("click", closeForm));
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const data = new FormData(form);
+      const status = String(data.get("status") || "Upcoming");
+      const result = String(data.get("result") || "").trim();
+      if (status === "Completed" && !result) {
+        errorEl.textContent = "Enter a match result before marking the match completed.";
+        errorEl.hidden = false;
+        return;
+      }
+      try {
+        await updateMatchDay(match.id, { status, result });
+        closeForm();
+        await refresh();
+      } catch (error) {
+        errorEl.textContent = "Unable to save the match result.";
+        errorEl.hidden = false;
+        console.error("Unable to save match result", error);
       }
     });
   }
