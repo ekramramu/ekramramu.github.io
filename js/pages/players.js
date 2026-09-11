@@ -199,7 +199,9 @@ async function playerTournamentStats(player, allPlayers) {
   const matchDayResponses = await Promise.all(matchDays.map((match) => listMatchResponses(match.id)));
   matchDays.forEach((match, index) => {
     const response = matchDayResponses[index].find((item) => item.playerId === player.id && item.response === "in");
-    if (response) history.push({ tournament: "Club Match Day", fixture: match.title || "Match day", result: match.result || "Result not recorded", date: match.date, venue: match.venueName || "-" });
+    const scored = (match.scorers || []).filter((scorer) => scorer.playerId === player.id).length;
+    goals += scored;
+    if (response) history.push({ tournament: "Club Match Day", fixture: `${match.title || "Match day"}${scored ? ` · ${scored} goal${scored === 1 ? "" : "s"}` : ""}`, result: match.result || "Result not recorded", date: match.date, venue: match.venueName || "-" });
   });
   const ranked = [...allPlayers].filter((item) => item.rating != null).sort((a, b) => Number(b.rating) - Number(a.rating));
   const rank = ranked.findIndex((item) => item.id === player.id) + 1;

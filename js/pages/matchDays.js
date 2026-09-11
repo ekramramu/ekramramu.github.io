@@ -79,8 +79,11 @@ function matchFormHtml(match = {}, venues = []) {
   `;
 }
 
-function resultFormHtml(match) {
-  return `<div class="modal-header"><h2>Match Result</h2><button class="icon-button" data-close-modal type="button" aria-label="Close">✕</button></div><form id="match-result-form"><div class="form-grid"><label class="form-field form-field-wide"><span>${escapeHtml(match.title || "Match day")}</span><input value="${escapeHtml(formatDate(match.date))}" disabled /></label><label class="form-field"><span>Status</span><select name="status"><option value="Upcoming" ${match.status === "Upcoming" ? "selected" : ""}>Upcoming</option><option value="Completed" ${match.status === "Completed" ? "selected" : ""}>Completed</option><option value="Cancelled" ${match.status === "Cancelled" ? "selected" : ""}>Cancelled</option></select></label><label class="form-field form-field-wide"><span>Result</span><input type="text" name="result" value="${escapeHtml(match.result || "")}" placeholder="e.g. SDFC 3 - 2 Opponent" /></label></div><p class="auth-error" id="match-result-error" role="alert" hidden></p><div class="auth-actions modal-actions"><button class="btn btn-secondary" data-close-modal type="button">Cancel</button><button class="btn btn-primary" type="submit">Save Result</button></div></form>`;
+function resultFormHtml(match, players) {
+  const options = (selectedId, placeholder) => `<option value="">${placeholder}</option>${players.map((player) => `<option value="${escapeHtml(player.id)}" ${player.id === selectedId ? "selected" : ""}>${escapeHtml(player.name)}</option>`).join("")}`;
+  const scorerRow = (scorerId = "") => `<div class="result-entry-row"><select name="scorerId">${options(scorerId, "Select scorer")}</select><button class="icon-button" data-remove-scorer type="button" aria-label="Remove scorer">✕</button></div>`;
+  const cardRow = (card = {}) => `<div class="result-entry-row"><select name="cardPlayerId">${options(card.playerId || "", "Select player")}</select><select name="cardType"><option value="yellow" ${card.type !== "red" ? "selected" : ""}>Yellow card</option><option value="red" ${card.type === "red" ? "selected" : ""}>Red card</option></select><button class="icon-button" data-remove-card type="button" aria-label="Remove card">✕</button></div>`;
+  return `<div class="modal-header"><h2>Match Result</h2><button class="icon-button" data-close-modal type="button" aria-label="Close">✕</button></div><form id="match-result-form"><div class="form-grid"><label class="form-field form-field-wide"><span>${escapeHtml(match.title || "Match day")}</span><input value="${escapeHtml(formatDate(match.date))}" disabled /></label><label class="form-field"><span>Status</span><select name="status"><option value="Upcoming" ${match.status === "Upcoming" ? "selected" : ""}>Upcoming</option><option value="Completed" ${match.status === "Completed" ? "selected" : ""}>Completed</option><option value="Cancelled" ${match.status === "Cancelled" ? "selected" : ""}>Cancelled</option></select></label><label class="form-field form-field-wide"><span>Result</span><input type="text" name="result" value="${escapeHtml(match.result || "")}" placeholder="e.g. SDFC 3 - 2 Opponent" /></label></div><fieldset class="selection-fieldset"><legend>Scorers</legend><div id="scorer-rows">${(match.scorers || []).map((scorer) => scorerRow(scorer.playerId)).join("")}</div><button class="btn btn-secondary btn-small" id="add-scorer" type="button">+ Add Scorer</button></fieldset><fieldset class="selection-fieldset"><legend>Cards</legend><div id="card-rows">${(match.cards || []).map(cardRow).join("")}</div><button class="btn btn-secondary btn-small" id="add-card" type="button">+ Add Card</button></fieldset><p class="auth-error" id="match-result-error" role="alert" hidden></p><div class="auth-actions modal-actions"><button class="btn btn-secondary" data-close-modal type="button">Cancel</button><button class="btn btn-primary" type="submit">Save Result</button></div></form>`;
 }
 
 function matchCard(match, { totalPlayers, responses, uid, canManage, canDelete }) {
@@ -158,14 +161,14 @@ export async function renderMatchDaysPage(container, { role, uid, player }) {
           canDelete
         }))
         .join("");
-      wireCardActions(matches);
+      wireCardActions(matches, players);
     } catch (error) {
       listEl.innerHTML = `<p class="empty-state">Unable to load match days.</p>`;
       console.error("Unable to load match days", error);
     }
   }
 
-  function wireCardActions(matches) {
+  function wireCardActions(matches, players) {
     listEl.querySelectorAll(".matchday-card").forEach((card) => {
       const id = card.dataset.id;
       const match = matches.find((item) => item.id === id);
@@ -180,7 +183,7 @@ export async function renderMatchDaysPage(container, { role, uid, player }) {
         });
       });
       card.querySelector("[data-action=edit]")?.addEventListener("click", () => openForm(match));
-      card.querySelector("[data-action=result]")?.addEventListener("click", () => openResultForm(match));
+      card.querySelector("[data-action=result]")?.addEventListener("click", () => openResultForm(match, players));
       card.querySelector("[data-action=delete]")?.addEventListener("click", async () => {
         if (!window.confirm(`Delete ${match.title}?`)) return;
         try {
@@ -257,23 +260,33 @@ export async function renderMatchDaysPage(container, { role, uid, player }) {
     });
   }
 
-  function openResultForm(match) {
-    const overlay = openModal(resultFormHtml(match));
+  function openResultForm(match, players) {
+    const overlay = openModal(resultFormHtml(match, players));
     const form = overlay.querySelector("#match-result-form");
     const errorEl = overlay.querySelector("#match-result-error");
     overlay.querySelectorAll("[data-close-modal]").forEach((button) => button.addEventListener("click", closeForm));
+    const playerOptions = (placeholder) => `<option value="">${placeholder}</option>${players.map((player) => `<option value="${escapeHtml(player.id)}">${escapeHtml(player.name)}</option>`).join("")}`;
+    form.querySelector("#add-scorer").addEventListener("click", () => form.querySelector("#scorer-rows").insertAdjacentHTML("beforeend", `<div class="result-entry-row"><select name="scorerId">${playerOptions("Select scorer")}</select><button class="icon-button" data-remove-scorer type="button" aria-label="Remove scorer">✕</button></div>`));
+    form.querySelector("#add-card").addEventListener("click", () => form.querySelector("#card-rows").insertAdjacentHTML("beforeend", `<div class="result-entry-row"><select name="cardPlayerId">${playerOptions("Select player")}</select><select name="cardType"><option value="yellow">Yellow card</option><option value="red">Red card</option></select><button class="icon-button" data-remove-card type="button" aria-label="Remove card">✕</button></div>`));
+    form.querySelector("#scorer-rows").addEventListener("click", (event) => event.target.closest("[data-remove-scorer]")?.closest(".result-entry-row")?.remove());
+    form.querySelector("#card-rows").addEventListener("click", (event) => event.target.closest("[data-remove-card]")?.closest(".result-entry-row")?.remove());
     form.addEventListener("submit", async (event) => {
       event.preventDefault();
       const data = new FormData(form);
       const status = String(data.get("status") || "Upcoming");
       const result = String(data.get("result") || "").trim();
+      const scorerIds = Array.from(form.querySelectorAll("[name=scorerId]"), (input) => input.value).filter(Boolean);
+      const cardPlayerIds = Array.from(form.querySelectorAll("[name=cardPlayerId]"), (input) => input.value);
+      const cardTypes = Array.from(form.querySelectorAll("[name=cardType]"), (input) => input.value);
+      const scorers = scorerIds.map((playerId) => ({ playerId }));
+      const cards = cardPlayerIds.map((playerId, index) => ({ playerId, type: cardTypes[index] })).filter((card) => card.playerId);
       if (status === "Completed" && !result) {
         errorEl.textContent = "Enter a match result before marking the match completed.";
         errorEl.hidden = false;
         return;
       }
       try {
-        await updateMatchDay(match.id, { status, result });
+        await updateMatchDay(match.id, { status, result, scorers, cards });
         closeForm();
         await refresh();
       } catch (error) {

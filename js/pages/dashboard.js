@@ -4,6 +4,7 @@ import {
   listMatchDays,
   listMatchResponses,
   listPlayers,
+  listTournaments,
   listTransactions,
   normalizeLegacyBillPayments,
   normalizeLegacyCollections,
@@ -112,6 +113,15 @@ function matchCardHtml(match, { totalPlayers, inCount, outCount, mine }) {
   `;
 }
 
+function dashboardPlayerCard(player) {
+  const photo = player.photoUrl ? `<img src="${escapeHtml(player.photoUrl)}" alt="" />` : `<span>${escapeHtml((player.name || "?").slice(0, 1))}</span>`;
+  return `<a class="dashboard-player-card" href="#/players/detail/${encodeURIComponent(player.id)}"><span class="dashboard-player-photo">${photo}</span><strong>${escapeHtml(player.name)}</strong><small>${escapeHtml(player.position || "Unassigned")} · #${escapeHtml(player.jerseyNumber ?? "-")}</small></a>`;
+}
+
+function dashboardTournamentCard(tournament) {
+  return `<a class="dashboard-tournament-card" href="#/tournaments/manage/${encodeURIComponent(tournament.id)}"><span class="eyebrow">${escapeHtml(tournament.format || "Tournament")}</span><strong>${escapeHtml(tournament.name)}</strong><small>${formatDate(tournament.date)} · ${escapeHtml(tournament.startTime || "Time TBC")}</small><span class="badge badge-moderator">${escapeHtml(tournament.status || "Upcoming")}</span></a>`;
+}
+
 export async function renderDashboardPage(container, { profile, email, role, uid }) {
   const displayName = escapeHtml(profile?.name || email || "there");
   container.innerHTML = `
@@ -143,6 +153,8 @@ export async function renderDashboardPage(container, { profile, email, role, uid
         ${matchCardHtml(null, {})}
       </div>
     </div>
+    <section class="dashboard-section"><div class="section-toolbar"><div><h2>Tournaments</h2><p>Upcoming and active club competitions.</p></div><a class="btn btn-secondary btn-small" href="#/tournaments">View all</a></div><div class="dashboard-tournament-row" id="dashboard-tournaments"><p class="empty-state">Loading tournaments…</p></div></section>
+    <section class="dashboard-section"><div class="section-toolbar"><div><h2>Players</h2><p>Club roster and player profiles.</p></div><a class="btn btn-secondary btn-small" href="#/players">View all</a></div><div class="dashboard-player-row" id="dashboard-players"><p class="empty-state">Loading players…</p></div></section>
   `;
 
   let totalPlayers = 0;
@@ -165,6 +177,22 @@ export async function renderDashboardPage(container, { profile, email, role, uid
     }
   } catch (error) {
     console.error("Unable to load dashboard summary", error);
+  }
+
+  try {
+    const tournaments = await listTournaments();
+    const tournamentSlot = document.getElementById("dashboard-tournaments");
+    tournamentSlot.innerHTML = tournaments.length ? tournaments.map(dashboardTournamentCard).join("") : `<p class="empty-state">No tournaments created yet.</p>`;
+  } catch (error) {
+    console.error("Unable to load dashboard tournaments", error);
+  }
+
+  try {
+    const players = await listPlayers();
+    const playerSlot = document.getElementById("dashboard-players");
+    playerSlot.innerHTML = players.length ? players.map(dashboardPlayerCard).join("") : `<p class="empty-state">No players found.</p>`;
+  } catch (error) {
+    console.error("Unable to load dashboard players", error);
   }
 
   try {
