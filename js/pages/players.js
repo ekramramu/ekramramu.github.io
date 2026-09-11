@@ -373,14 +373,6 @@ export function renderNewPlayerPage(container) {
   });
 }
 
-const PROFILE_TABS = [
-  { id: "edit", label: "✎ Edit Profile" },
-  { id: "password", label: "🔒 Change Password" },
-  { id: "matches", label: "◷ Match History" },
-  { id: "goalkeeping", label: "🧤 Goalkeeping History" },
-  { id: "captaincy", label: "🎖 Captaincy History" }
-];
-
 function starRatingHtml(rating) {
   const filled = Math.round((Number(rating) || 0) / 2);
   return Array.from({ length: 5 }, (_, index) => `<span class="${index < filled ? "" : "star-off"}">★</span>`).join("");
@@ -447,8 +439,6 @@ export async function renderMyProfilePage(container, { email, uid, role, profile
       <div class="profile-avatar-wrap">
         <span class="profile-avatar" id="profile-banner-avatar">${mine.photoUrl ? `<img src="${escapeHtml(mine.photoUrl)}" alt="" />` : "◉"}</span>
         ${mine.status !== "inactive" ? `<span class="profile-online-dot" aria-hidden="true"></span>` : ""}
-        <button class="profile-photo-button" id="profile-photo-button" type="button" title="Upload profile image" aria-label="Upload profile image">📷</button>
-        <input id="profile-photo-input" type="file" accept="image/jpeg,image/png,image/webp" hidden />
       </div>
       <div class="profile-heading">
         <h1 class="profile-name">${escapeHtml(mine.name)}</h1>
@@ -485,158 +475,12 @@ export async function renderMyProfilePage(container, { email, uid, role, profile
           <div class="red-cards"><strong>${mine.redCards || 0}</strong><span>Red Cards</span></div>
         </div>
       </div>
-      <div class="profile-tabs-card">
-        <div class="tabs" id="profile-tabs">
-          ${PROFILE_TABS.map((tab, index) => `<button class="tab-button${index === 0 ? " active" : ""}" data-tab="${tab.id}" type="button">${tab.label}</button>`).join("")}
-        </div>
-        <div id="profile-tab-content"></div>
-      </div>
+      <div class="profile-tabs-card"><h2>Match History</h2><div id="profile-tab-content"><p class="empty-state">Loading match history…</p></div></div>
     </div>
   `;
 
-  const tabButtons = Array.from(root.querySelectorAll("#profile-tabs .tab-button"));
   const tabContent = document.getElementById("profile-tab-content");
-  const profilePhotoButton = document.getElementById("profile-photo-button");
-  const profilePhotoInput = document.getElementById("profile-photo-input");
-  const profilePhotoError = document.getElementById("profile-photo-error");
-  profilePhotoButton.addEventListener("click", () => profilePhotoInput.click());
-  profilePhotoInput.addEventListener("change", () => {
-    const file = profilePhotoInput.files && profilePhotoInput.files[0];
-    if (!file) return;
-    profilePhotoError.hidden = true;
-    if (file.size > 700 * 1024) {
-      profilePhotoError.textContent = "Please choose an image smaller than 700 KB.";
-      profilePhotoError.hidden = false;
-      return;
-    }
-    const reader = new FileReader();
-    reader.onload = async () => {
-      const photoUrl = String(reader.result || "");
-      profilePhotoButton.disabled = true;
-      try {
-        await updatePlayer(mine.id, { photoUrl });
-        mine.photoUrl = photoUrl;
-        document.getElementById("profile-banner-avatar").innerHTML = `<img src="${escapeHtml(photoUrl)}" alt="" />`;
-      } catch (error) {
-        profilePhotoError.textContent = "Unable to upload your profile image. Please try again.";
-        profilePhotoError.hidden = false;
-        console.error("Unable to upload profile image", error);
-      } finally {
-        profilePhotoButton.disabled = false;
-      }
-    };
-    reader.readAsDataURL(file);
-  });
-
-  function renderEditTab() {
-    tabContent.innerHTML = `
-      <form id="profile-edit-form">
-        ${playerFieldsHtml(mine, { gridClass: "form-grid", includeAdminFields: false })}
-        <p class="auth-error" id="profile-edit-error" role="alert" hidden></p>
-        <p class="auth-error" id="profile-edit-success" role="status" hidden style="background: var(--success-soft); color: var(--success);"></p>
-        <div class="form-actions-row" style="margin-top: 16px;">
-          <button class="btn btn-success" type="submit">Save Changes</button>
-        </div>
-      </form>
-      <div class="notification-row">
-        <span class="profile-detail-icon" aria-hidden="true">♧</span>
-        <div style="flex:1;">
-          <strong>Email Notifications</strong>
-          <p>Match day reminders, payment reminders and teams-announced emails. Turn off to stop receiving these.</p>
-        </div>
-        <label class="toggle-switch">
-          <input type="checkbox" id="notifications-toggle" ${mine.emailNotifications === false ? "" : "checked"} />
-          <span class="toggle-switch-track" aria-hidden="true"></span>
-        </label>
-      </div>
-    `;
-
-    const form = document.getElementById("profile-edit-form");
-    const errorEl = document.getElementById("profile-edit-error");
-    const successEl = document.getElementById("profile-edit-success");
-    form.addEventListener("submit", async (event) => {
-      event.preventDefault();
-      errorEl.hidden = true;
-      successEl.hidden = true;
-      const payload = readPlayerForm(form);
-      if (!payload.name) {
-        errorEl.textContent = "Name is required.";
-        errorEl.hidden = false;
-        return;
-      }
-      try {
-        await updatePlayer(mine.id, payload);
-        Object.assign(mine, payload);
-        successEl.textContent = "Profile updated.";
-        successEl.hidden = false;
-      } catch (error) {
-        errorEl.textContent = "Unable to save changes. Please try again.";
-        errorEl.hidden = false;
-        console.error("Unable to save profile", error);
-      }
-    });
-
-    document.getElementById("notifications-toggle").addEventListener("change", async (event) => {
-      const checked = event.currentTarget.checked;
-      try {
-        await updateUserPreferences(uid, { emailNotifications: checked });
-      } catch (error) {
-        console.error("Unable to save notification preference", error);
-      }
-    });
-  }
-
-  function renderPasswordTab() {
-    tabContent.innerHTML = `
-      <form id="password-form" class="form-grid">
-        <p class="auth-error" id="password-error" role="alert" hidden></p>
-        <p class="auth-error" id="password-success" role="status" hidden style="background: var(--success-soft); color: var(--success);"></p>
-        <label class="form-field">
-          <span>Current Password</span>
-          <input type="password" name="currentPassword" autocomplete="current-password" required />
-        </label>
-        <label class="form-field">
-          <span>New Password</span>
-          <input type="password" name="newPassword" autocomplete="new-password" minlength="6" required />
-        </label>
-        <label class="form-field">
-          <span>Confirm New Password</span>
-          <input type="password" name="confirmPassword" autocomplete="new-password" minlength="6" required />
-        </label>
-        <div class="form-actions-row">
-          <button class="btn btn-success" type="submit">Update Password</button>
-        </div>
-      </form>
-    `;
-    const form = document.getElementById("password-form");
-    const errorEl = document.getElementById("password-error");
-    const successEl = document.getElementById("password-success");
-    form.addEventListener("submit", async (event) => {
-      event.preventDefault();
-      errorEl.hidden = true;
-      successEl.hidden = true;
-      const formData = new FormData(form);
-      const currentPassword = String(formData.get("currentPassword") || "");
-      const newPassword = String(formData.get("newPassword") || "");
-      const confirmPassword = String(formData.get("confirmPassword") || "");
-      if (newPassword !== confirmPassword) {
-        errorEl.textContent = "New passwords do not match.";
-        errorEl.hidden = false;
-        return;
-      }
-      try {
-        await changePassword({ currentPassword, newPassword });
-        successEl.textContent = "Password updated.";
-        successEl.hidden = false;
-        form.reset();
-      } catch (error) {
-        errorEl.textContent = friendlyAuthError(error);
-        errorEl.hidden = false;
-      }
-    });
-  }
-
-  async function renderMatchHistoryTab() {
+  async function renderMatchHistory() {
     tabContent.innerHTML = `<p class="empty-state">Loading match history…</p>`;
     try {
       const matches = await listMatchDays();
@@ -671,24 +515,7 @@ export async function renderMyProfilePage(container, { email, uid, role, profile
     }
   }
 
-  function renderEmptyTab(message) {
-    tabContent.innerHTML = `<p class="empty-state">${escapeHtml(message)}</p>`;
-  }
-
-  function activateTab(tabId) {
-    tabButtons.forEach((button) => button.classList.toggle("active", button.dataset.tab === tabId));
-    if (tabId === "edit") renderEditTab();
-    else if (tabId === "password") renderPasswordTab();
-    else if (tabId === "matches") renderMatchHistoryTab();
-    else if (tabId === "goalkeeping") renderEmptyTab("No goalkeeping history recorded yet.");
-    else if (tabId === "captaincy") renderEmptyTab("No captaincy history recorded yet.");
-  }
-
-  tabButtons.forEach((button) => {
-    button.addEventListener("click", () => activateTab(button.dataset.tab));
-  });
-
-  activateTab("edit");
+  renderMatchHistory();
 }
 
 
