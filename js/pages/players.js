@@ -5,6 +5,24 @@ import { navigate } from "../router.js";
 
 export const POSITION_OPTIONS = ["Unassigned", "Goalkeeper", "Defender", "Midfielder", "Forward"];
 
+const SDFC_2026_RATINGS = [
+  ["Ejaz Kadry", 4.792], ["Reazur Rabbi", 6.000], ["Link On", 6.150], ["Shamim", 5.800],
+  ["Ealham", 6.025], ["Ashraf", 5.125], ["Adnan", 4.300], ["Bashir", 6.725],
+  ["Nahid", 5.375], ["Arif", 5.675], ["Shadman", 6.850], ["Saikat", 6.050],
+  ["Faisal", 6.275], ["Rony", 5.825], ["Sabbir Hossain", 5.300], ["Redwan", 6.725],
+  ["Rahik", 5.375], ["Ekram", 6.600], ["Tanveer", 5.425], ["Russell", 6.700], ["Milon", 7.075]
+];
+
+const RATING_NAME_ALIASES = new Map([
+  ["ashraf", ["ashrafmdabdullah"]], ["bashir", ["mdbashirulawalmamun"]], ["ekram", ["ekramulhoque"]],
+  ["faisal", ["mdfaisalahmed"]], ["linkon", ["linkon"]], ["russell", ["faisalamrussell"]],
+  ["shamim", ["mrshamim"]], ["sabbirhossain", ["mdsabbirhossain"]]
+]);
+
+function normalizedPlayerName(value) {
+  return String(value || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
 function playerRow(player, canManage, canDelete, userProfile, canChangeRole) {
   return `
     <tr data-id="${escapeHtml(player.id)}">
@@ -238,7 +256,7 @@ export async function renderPlayersPage(container, { role, email }) {
   container.innerHTML = `
     <div class="page-header">
       <h1 class="page-title">Players</h1>
-      ${canManage ? `<button class="btn btn-primary" id="add-player-button" type="button">+ Add player</button>` : ""}
+      ${canManage ? `<div class="table-actions">${role === "admin" ? `<button class="btn btn-secondary" id="import-ratings-button" type="button">Apply SDFC 2026 ratings</button>` : ""}<button class="btn btn-primary" id="add-player-button" type="button">+ Add player</button></div>` : ""}
     </div>
     <div id="player-form-slot"></div>
     <p class="page-subtitle">Select a player to view their club profile, tournament record, and game history.</p>
@@ -329,6 +347,34 @@ export async function renderPlayersPage(container, { role, email }) {
 
   if (canManage) {
     document.getElementById("add-player-button").addEventListener("click", () => navigate("/players/new"));
+  }
+
+  if (role === "admin") {
+    document.getElementById("import-ratings-button").addEventListener("click", async () => {
+      if (!window.confirm("Apply the confirmed SDFC 2026 average ratings to matching player profiles? Existing player data will not be changed.")) return;
+      const button = document.getElementById("import-ratings-button");
+      button.disabled = true;
+      try {
+        const players = await listPlayers();
+        const updates = [];
+        const unmatched = [];
+        SDFC_2026_RATINGS.forEach(([sheetName, rating]) => {
+          const sheetKey = normalizedPlayerName(sheetName);
+          const names = [sheetKey, ...(RATING_NAME_ALIASES.get(sheetKey) || [])];
+          const matches = players.filter((player) => names.includes(normalizedPlayerName(player.name)));
+          if (matches.length === 1) updates.push(updatePlayer(matches[0].id, { rating }));
+          else unmatched.push(sheetName);
+        });
+        await Promise.all(updates);
+        await refresh();
+        window.alert(`Updated ${updates.length} player ratings.${unmatched.length ? ` No unique match for: ${unmatched.join(", ")}.` : ""}`);
+      } catch (error) {
+        console.error("Unable to import player ratings", error);
+        window.alert("Unable to apply player ratings. Please try again.");
+      } finally {
+        button.disabled = false;
+      }
+    });
   }
 
   await refresh();
