@@ -93,6 +93,10 @@ export function playerFieldsHtml(player, { gridClass = "form-grid", includeAdmin
       </label>
       ${includeAdminFields ? `
         <label class="form-field">
+          <span>Player Rating (0-10)</span>
+          <input type="number" name="rating" min="0" max="10" step="0.001" placeholder="e.g. 7.525" value="${escapeHtml(player.rating ?? "")}" />
+        </label>
+        <label class="form-field">
           <span>Teams ID</span>
           <input type="text" name="teamsId" placeholder="Teams ID" value="${escapeHtml(player.teamsId || "")}" />
         </label>
@@ -143,6 +147,7 @@ export function readPlayerForm(form) {
   setIfPresent("heightCm", (v) => (v ? Number(v) : null));
   setIfPresent("weightKg", (v) => (v ? Number(v) : null));
   setIfPresent("fitnessStatus", (v) => String(v || "Fit"));
+  setIfPresent("rating", (v) => (v === "" ? null : Number(v)));
   setIfPresent("status", (v) => String(v || "active"));
   setIfPresent("photoUrl", (v) => String(v || ""));
   return payload;
@@ -214,7 +219,7 @@ function playerDetailsHtml(player, stats) {
   const years = joined ? Math.max(0, new Date().getFullYear() - joined.getFullYear()) : null;
   const photo = player.photoUrl ? `<img src="${escapeHtml(player.photoUrl)}" alt="" />` : `<span>${escapeHtml((player.name || "?").slice(0, 1))}</span>`;
   const detail = (label, value) => `<div><span>${label}</span><strong>${escapeHtml(value)}</strong></div>`;
-  return `<div class="player-detail-hero"><div class="player-detail-photo">${photo}</div><div><h1>${escapeHtml(player.name)}</h1><p>${escapeHtml(player.position || "Unassigned")} · Jersey #${escapeHtml(player.jerseyNumber ?? "-")}</p></div></div><div class="player-detail-grid">${detail("Joined Club", joined ? formatDate(joined) : "Not recorded")}${detail("Playing Years", years == null ? "Not recorded" : `${years} year${years === 1 ? "" : "s"}`)}${detail("Height", player.heightCm ? `${player.heightCm} cm` : "Not recorded")}${detail("Weight", player.weightKg ? `${player.weightKg} kg` : "Not recorded")}${detail("Fitness", player.fitnessStatus || "Not recorded")}${detail("Club Rating", player.rating == null ? "Not rated" : `${Number(player.rating).toFixed(1)} / 10`)}${detail("Rating Rank", stats.rank ? `Top ${stats.percentile}% (#${stats.rank})` : "Not ranked")}${detail("Tournaments", String(stats.attended))}${detail("Total Goals", String(stats.goals))}${detail("Total Assists", String(stats.assists))}</div><section class="player-record-summary"><h2>Match Record</h2><div><strong>${stats.played}</strong><span>Played</span></div><div><strong>${stats.wins}</strong><span>Wins</span></div><div><strong>${stats.losses}</strong><span>Losses</span></div><div><strong>${stats.draws}</strong><span>Draws</span></div></section><section class="player-game-history"><h2>Game History</h2><div class="table-wrap"><table class="data-table"><thead><tr><th>Competition</th><th>Match</th><th>Recorded Result</th><th>Minutes</th><th>Shots</th><th>Rating</th></tr></thead><tbody>${stats.history.map((game) => `<tr><td>${escapeHtml(game.tournament)}</td><td>${escapeHtml(game.fixture)}</td><td>${escapeHtml(game.result)}</td><td>-</td><td>-</td><td>-</td></tr>`).join("") || `<tr><td colspan="6" class="empty-state">No completed tournament matches or attended match days recorded.</td></tr>`}</tbody></table></div></section>`;
+  return `<div class="player-detail-hero"><div class="player-detail-photo">${photo}</div><div><h1>${escapeHtml(player.name)}</h1><p>${escapeHtml(player.position || "Unassigned")} · Jersey #${escapeHtml(player.jerseyNumber ?? "-")}</p></div></div><div class="player-detail-grid">${detail("Email", player.email || "Not recorded")}${detail("Joined Club", joined ? formatDate(joined) : "Not recorded")}${detail("Playing Years", years == null ? "Not recorded" : `${years} year${years === 1 ? "" : "s"}`)}${detail("Height", player.heightCm ? `${player.heightCm} cm` : "Not recorded")}${detail("Weight", player.weightKg ? `${player.weightKg} kg` : "Not recorded")}${detail("Fitness", player.fitnessStatus || "Not recorded")}${detail("Club Rating", player.rating == null ? "Not rated" : `${Number(player.rating).toFixed(1)} / 10`)}${detail("Rating Rank", stats.rank ? `Top ${stats.percentile}% (#${stats.rank})` : "Not ranked")}${detail("Tournaments", String(stats.attended))}${detail("Total Goals", String(stats.goals))}${detail("Total Assists", String(stats.assists))}</div><section class="player-record-summary"><h2>Match Record</h2><div><strong>${stats.played}</strong><span>Played</span></div><div><strong>${stats.wins}</strong><span>Wins</span></div><div><strong>${stats.losses}</strong><span>Losses</span></div><div><strong>${stats.draws}</strong><span>Draws</span></div></section><section class="player-game-history"><h2>Game History</h2><div class="table-wrap"><table class="data-table"><thead><tr><th>Competition</th><th>Match</th><th>Recorded Result</th><th>Minutes</th><th>Shots</th><th>Rating</th></tr></thead><tbody>${stats.history.map((game) => `<tr><td>${escapeHtml(game.tournament)}</td><td>${escapeHtml(game.fixture)}</td><td>${escapeHtml(game.result)}</td><td>-</td><td>-</td><td>-</td></tr>`).join("") || `<tr><td colspan="6" class="empty-state">No completed tournament matches or attended match days recorded.</td></tr>`}</tbody></table></div></section>`;
 }
 
 export async function renderPlayerDetailsPage(container) {
@@ -232,12 +237,42 @@ export async function renderPlayerDetailsPage(container) {
   }
 }
 
+export async function renderPlayerEditPage(container) {
+  const playerId = decodeURIComponent(window.location.hash.replace(/^#\/players\/edit\//, "").split("?")[0]);
+  container.innerHTML = `<div class="breadcrumb"><a href="#/players">Players</a><span>/</span><span class="breadcrumb-current">Edit Player</span></div><div class="form-panel" id="player-edit-panel"><p class="empty-state">Loading player…</p></div>`;
+  const panel = container.querySelector("#player-edit-panel");
+  try {
+    const player = (await listPlayers()).find((item) => item.id === playerId);
+    if (!player) throw new Error("Player not found");
+    panel.innerHTML = `<div class="form-panel-heading">Edit Player</div>${playerFormHtml(player)}`;
+    const form = panel.querySelector("#player-form");
+    const errorEl = panel.querySelector("#player-form-error");
+    wirePhotoUpload(form);
+    form.querySelector("#player-form-cancel").addEventListener("click", () => navigate("/players"));
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      errorEl.hidden = true;
+      try {
+        await updatePlayer(player.id, readPlayerForm(form));
+        navigate("/players");
+      } catch (error) {
+        errorEl.textContent = "Unable to save player. Please try again.";
+        errorEl.hidden = false;
+        console.error("Unable to save player", error);
+      }
+    });
+  } catch (error) {
+    panel.innerHTML = `<p class="empty-state">Player profile unavailable.</p>`;
+    console.error("Unable to load player for editing", error);
+  }
+}
+
 export async function renderPlayersPage(container, { role, email }) {
   const canManage = role === "admin" || role === "moderator";
   const canDelete = role === "admin";
   container.innerHTML = `
     <div class="page-header">
-      <h1 class="page-title">Players</h1>
+      <div><h1 class="page-title">Players</h1><p class="page-subtitle" id="player-total">Total players: —</p></div>
       ${canManage ? `<button class="btn btn-primary" id="add-player-button" type="button">+ Add player</button>` : ""}
     </div>
     <div id="player-form-slot"></div>
@@ -255,6 +290,7 @@ export async function renderPlayersPage(container, { role, email }) {
         role === "admin" ? listUserProfiles() : Promise.resolve([])
       ]);
       const profilesByEmail = new Map(userProfiles.map((item) => [(item.email || "").toLowerCase(), item]));
+      document.getElementById("player-total").textContent = `Total players: ${players.length}`;
       directory.innerHTML = players.length
         ? players.map((player) => playerCard(
           player,
@@ -275,7 +311,10 @@ export async function renderPlayersPage(container, { role, email }) {
     directory.querySelectorAll("[data-id]").forEach((row) => {
       const id = row.dataset.id;
       const player = players.find((item) => item.id === id);
-      row.querySelector("[data-action=edit]")?.addEventListener("click", () => openForm(player));
+      row.querySelector("[data-action=edit]")?.addEventListener("click", (event) => {
+        event.stopPropagation();
+        navigate(`/players/edit/${encodeURIComponent(player.id)}`);
+      });
       row.querySelector("[data-action=role]")?.addEventListener("click", async () => {
         const userProfile = profilesByEmail.get((player.email || "").toLowerCase());
         const role = userProfile.role === "moderator" ? "player" : "moderator";

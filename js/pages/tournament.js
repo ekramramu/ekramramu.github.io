@@ -80,7 +80,8 @@ function tournamentForm(tournament, players, venues) {
 
 async function openTournamentForm(tournament, onSaved) {
   let [players, venues] = await Promise.all([listPlayers(), listVenues()]);
-  players = players.filter((player) => player.status !== "inactive");
+  const existingPlayerIds = tournament.playerIds || [];
+  players = players.filter((player) => player.status !== "inactive" || existingPlayerIds.includes(player.id));
   venues = venues.filter((venue) => venue.status !== "inactive");
   const overlay = showModal(tournamentForm(tournament, players, venues));
   const form = overlay.querySelector("#tournament-form");
@@ -90,7 +91,11 @@ async function openTournamentForm(tournament, onSaved) {
     const data = new FormData(form);
     const venueId = String(data.get("venueId") || "");
     const venue = venues.find((item) => item.id === venueId);
-    const playerIds = selected(form, "playerIds");
+    const availablePlayerIds = new Set(players.map((player) => player.id));
+    const playerIds = [...new Set([
+      ...selected(form, "playerIds"),
+      ...existingPlayerIds.filter((id) => !availablePlayerIds.has(id))
+    ])];
     const payload = {
       name: String(data.get("name") || "").trim(), date: String(data.get("date") || ""),
       startTime: String(data.get("startTime") || ""), venueId, venueName: venue?.name || "",
@@ -320,7 +325,15 @@ export async function renderTournamentManagePage(container, { role }) {
   }
 
   function openCollection(item = {}) {
-    const players = (state.tournament.playerIds || []).map((playerId) => state.players.find((player) => player.id === playerId)).filter(Boolean);
+    const collectedPlayerIds = new Set(
+      state.collections
+        .filter((collection) => collection.id !== item.id)
+        .map((collection) => collection.playerId)
+    );
+    const players = (state.tournament.playerIds || [])
+      .filter((playerId) => !collectedPlayerIds.has(playerId))
+      .map((playerId) => state.players.find((player) => player.id === playerId))
+      .filter(Boolean);
     const overlay = showModal(collectionForm(item, players));
     const form = overlay.querySelector("#collection-form");
     form.addEventListener("submit", async (event) => {
@@ -328,6 +341,7 @@ export async function renderTournamentManagePage(container, { role }) {
       const data = new FormData(form), playerId = String(data.get("playerId") || ""), player = players.find((candidate) => candidate.id === playerId);
       const payload = { playerId, payerName: player?.name || "", date: String(data.get("date") || ""), amount: Number(data.get("amount")), paymentMethod: String(data.get("paymentMethod") || "Cash"), notes: String(data.get("notes") || "").trim() };
       if (!player || !payload.date || !Number.isFinite(payload.amount) || payload.amount <= 0) return showError(overlay, "Payer, date, and an amount greater than zero are required.");
+      if (state.collections.some((collection) => collection.id !== item.id && collection.playerId === playerId)) return showError(overlay, "A collection has already been recorded for this player.");
       try { if (item.id) await updateTournamentCollection(id, item.id, payload); else await addTournamentCollection(id, payload); closeModal(); await refresh(); }
       catch (error) { showError(overlay, "Unable to save the collection."); console.error(error); }
     });

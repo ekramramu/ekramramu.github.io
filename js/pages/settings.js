@@ -1,7 +1,7 @@
 import { changePassword, updateUserPreferences } from "../auth.js";
 import { listPlayers, updatePlayer } from "../data.js";
 import { escapeHtml, friendlyAuthError } from "../utils.js";
-import { photoUploadHtml, playerFieldsHtml, readPlayerForm, wirePhotoUpload } from "./players.js";
+import { photoUploadHtml, playerFieldsHtml, readPlayerForm, wirePhotoUpload } from "./players.js?v=20260917-4";
 
 export async function renderSettingsPage(container, { profile, email, role, uid }) {
   container.innerHTML = `<div class="page-header"><h1 class="page-title">Settings</h1></div><div id="settings-content"><p class="empty-state">Loading settings…</p></div>`;
