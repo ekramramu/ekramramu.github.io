@@ -251,6 +251,7 @@ button, input, select, textarea { font-family: inherit; }
 .result-summary-list { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
 .result-summary-list li { padding: 12px; border-left: 3px solid var(--success); background: var(--surface); }
 .result-summary-list strong { display: block; margin-bottom: 5px; }
+.standings-table th:nth-child(n+3), .standings-table td:nth-child(n+3) { text-align: center; }
 .selection-fieldset { min-width: 0; margin: 0; padding: 0; border: 0; }
 .selection-fieldset legend { width: 100%; margin-bottom: 10px; color: var(--ink); font: 600 .82rem var(--display); }
 .selection-fieldset legend span { margin-left: 6px; color: var(--muted); font: 500 .68rem var(--mono); }

@@ -188,23 +188,45 @@ function detailHeader(tournament, staff, canDelete) {
     <div class="page-header"><div><span class="eyebrow">${escapeHtml(tournament.format)}</span><h1 class="page-title">${escapeHtml(tournament.name)}</h1><p class="page-subtitle">${dateLabel(tournament.date)}, ${escapeHtml(tournament.startTime)} · ${escapeHtml(tournament.venueName)}</p></div><div class="tournament-heading-actions"><span class="badge badge-${statusClass(tournament.status)}">${escapeHtml(tournament.status)}</span>${staff ? `<button class="btn btn-secondary btn-small" id="edit-tournament" type="button">Edit Tournament</button>` : ""}${canDelete ? `<button class="btn btn-danger btn-small" id="delete-tournament" type="button">Delete Tournament</button>` : ""}</div></div>`;
 }
 
+function computeStandings(state) {
+  const table = new Map((state.teams || []).map((team) => [team.id, { name: team.name, played: 0, won: 0, drawn: 0, lost: 0, gf: 0, ga: 0, points: 0 }]));
+  state.fixtures.filter((fixture) => fixture.homeScore != null && fixture.awayScore != null).forEach((fixture) => {
+    const home = table.get(fixture.homeTeamId), away = table.get(fixture.awayTeamId);
+    if (!home || !away) return;
+    const hs = Number(fixture.homeScore), as = Number(fixture.awayScore);
+    home.played += 1; away.played += 1;
+    home.gf += hs; home.ga += as; away.gf += as; away.ga += hs;
+    if (hs > as) { home.won += 1; home.points += 3; away.lost += 1; }
+    else if (hs < as) { away.won += 1; away.points += 3; home.lost += 1; }
+    else { home.drawn += 1; away.drawn += 1; home.points += 1; away.points += 1; }
+  });
+  return [...table.values()].map((row) => ({ ...row, gd: row.gf - row.ga }))
+    .sort((a, b) => b.points - a.points || b.gd - a.gd || b.gf - a.gf || a.name.localeCompare(b.name));
+}
+
 function overview(state) {
   const roster = (state.tournament.playerIds || []).map((id) => state.players.find((player) => player.id === id)).filter(Boolean);
   const total = state.collections.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
   const completedFixtures = state.fixtures.filter((fixture) => fixture.homeScore != null && fixture.awayScore != null);
   const scorerTotals = new Map();
   completedFixtures.forEach((fixture) => (fixture.goals || []).forEach((goal) => {
-    scorerTotals.set(goal.scorerId, (scorerTotals.get(goal.scorerId) || 0) + 1);
+    if (goal.scorerId) scorerTotals.set(goal.scorerId, (scorerTotals.get(goal.scorerId) || 0) + 1);
   }));
-  const topScorers = [...scorerTotals.entries()].filter(([, goals]) => goals === Math.max(...scorerTotals.values())).map(([playerId, goals]) => `${nameFor(playerId, state.players)} (${goals})`);
+  const maxGoals = Math.max(0, ...scorerTotals.values());
+  const topScorers = maxGoals > 0 ? [...scorerTotals.entries()].filter(([, goals]) => goals === maxGoals).map(([playerId]) => `${nameFor(playerId, state.players)} (${maxGoals})`) : [];
+  const standings = computeStandings(state);
+  const standingsRows = standings.map((row, index) => `<tr><td>${index + 1}</td><td>${escapeHtml(row.name)}</td><td>${row.played}</td><td>${row.won}</td><td>${row.drawn}</td><td>${row.lost}</td><td>${row.gf}</td><td>${row.ga}</td><td>${row.gd > 0 ? "+" : ""}${row.gd}</td><td><strong>${row.points}</strong></td></tr>`).join("") || `<tr><td colspan="10" class="empty-state">Create teams to see standings.</td></tr>`;
   const results = completedFixtures.map((fixture) => {
     const winner = fixture.homeScore === fixture.awayScore ? "Draw" : fixture.homeScore > fixture.awayScore ? fixture.homeTeamName : fixture.awayTeamName;
     const motm = fixture.manOfTheMatchId ? nameFor(fixture.manOfTheMatchId, state.players) : "Not selected";
-    return `<li><strong>${escapeHtml(fixture.homeTeamName)} ${fixture.homeScore} - ${fixture.awayScore} ${fixture.awayTeamName}</strong><span>${escapeHtml(winner)}${fixture.homeScore === fixture.awayScore ? "" : " won"} · Man of the Match: ${escapeHtml(motm)}</span></li>`;
+    const scorers = (fixture.goals || []).filter((goal) => goal.scorerId).map((goal) => `${nameFor(goal.scorerId, state.players)}${goal.assistId ? ` (assist ${nameFor(goal.assistId, state.players)})` : ""}`).join(", ");
+    return `<li><strong>${escapeHtml(fixture.homeTeamName)} ${fixture.homeScore} - ${fixture.awayScore} ${fixture.awayTeamName}</strong><span>${escapeHtml(winner)}${fixture.homeScore === fixture.awayScore ? "" : " won"} · Man of the Match: ${escapeHtml(motm)}${scorers ? ` · Scorers: ${escapeHtml(scorers)}` : ""}</span></li>`;
   }).join("");
   return `<div class="tournament-summary-grid"><div><span>Status</span><strong>${escapeHtml(state.tournament.status)}</strong></div><div><span>Players</span><strong>${roster.length}</strong></div><div><span>Teams</span><strong>${state.teams.length}</strong></div><div><span>Fixtures</span><strong>${state.fixtures.length}</strong></div><div><span>Collected</span><strong>${formatCurrency(total)}</strong></div></div>
     <div class="tournament-overview-grid"><section class="tournament-section"><h2>Tournament Information</h2><dl class="detail-list"><div><dt>Date & Time</dt><dd>${dateLabel(state.tournament.date)}, ${escapeHtml(state.tournament.startTime)}</dd></div><div><dt>Venue</dt><dd>${escapeHtml(state.tournament.venueName)}</dd></div><div><dt>Format</dt><dd>${escapeHtml(state.tournament.format)}</dd></div><div><dt>Other Information</dt><dd>${escapeHtml(state.tournament.notes || "No additional information.")}</dd></div></dl></section>
-    <section class="tournament-section"><h2>Tournament Players</h2><div class="roster-chip-list">${roster.map((player) => `<span>${escapeHtml(player.name)}<small>${escapeHtml(player.position || "Unassigned")}</small></span>`).join("") || `<p class="empty-state">No selected players.</p>`}</div></section></div><section class="tournament-section"><h2>Results Summary</h2><div class="results-summary"><div><span>Completed Matches</span><strong>${completedFixtures.length}</strong></div><div><span>Top Scorer</span><strong>${escapeHtml(topScorers.join(", ") || "No goals recorded")}</strong></div></div><ul class="result-summary-list">${results || `<li class="drop-hint">No match results recorded yet.</li>`}</ul></section>`;
+    <section class="tournament-section"><h2>Tournament Players</h2><div class="roster-chip-list">${roster.map((player) => `<span>${escapeHtml(player.name)}<small>${escapeHtml(player.position || "Unassigned")}</small></span>`).join("") || `<p class="empty-state">No selected players.</p>`}</div></section></div>
+    <section class="tournament-section"><h2>Standings</h2><div class="table-wrap"><table class="data-table standings-table"><thead><tr><th>#</th><th>Team</th><th title="Played">P</th><th title="Won">W</th><th title="Drawn">D</th><th title="Lost">L</th><th title="Goals for">GF</th><th title="Goals against">GA</th><th title="Goal difference">GD</th><th title="Points">Pts</th></tr></thead><tbody>${standingsRows}</tbody></table></div></section>
+    <section class="tournament-section"><h2>Results Summary</h2><div class="results-summary"><div><span>Completed Matches</span><strong>${completedFixtures.length}</strong></div><div><span>Top Scorer</span><strong>${escapeHtml(topScorers.join(", ") || "No goals recorded")}</strong></div></div><ul class="result-summary-list">${results || `<li class="drop-hint">No match results recorded yet.</li>`}</ul></section>`;
 }
 
 function teamsView(state, staff, canDelete) {
