@@ -129,7 +129,7 @@ function matchCard(match, { totalPlayers, responses, uid, canManage, canDelete }
 
 export async function renderMatchDaysPage(container, { role, uid, player }) {
   const canManage = role === "admin" || role === "moderator";
-  const canDelete = role === "admin";
+  const canDelete = role === "admin" || role === "moderator";
   container.innerHTML = `
     <div class="page-header">
       <div>

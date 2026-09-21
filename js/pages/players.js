@@ -269,7 +269,7 @@ export async function renderPlayerEditPage(container) {
 
 export async function renderPlayersPage(container, { role, email }) {
   const canManage = role === "admin" || role === "moderator";
-  const canDelete = role === "admin";
+  const canDelete = role === "admin" || role === "moderator";
   container.innerHTML = `
     <div class="page-header">
       <div><h1 class="page-title">Players</h1><p class="page-subtitle" id="player-total">Total players: —</p></div>

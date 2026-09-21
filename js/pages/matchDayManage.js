@@ -92,7 +92,7 @@ export async function renderMatchDayManagePage(container, { role }) {
   const matchId = matchIdFromHash();
   if (!matchId) return navigate("/match-days");
   const staff = staffRole(role);
-  const canDelete = role === "admin";
+  const canDelete = role === "admin" || role === "moderator";
   let state, tab = "overview";
   container.innerHTML = `<p class="empty-state">Loading Match Day workspace…</p>`;
 

@@ -13,6 +13,8 @@ export const TOURNAMENT_STATUSES = ["Upcoming", "Registration/Open", "Team Forma
 const TOURNAMENT_FORMATS = ["League", "Knockout", "Group + Knockout", "Round Robin", "Friendly"];
 const FIXTURE_STATUSES = ["Scheduled", "Ongoing", "Completed", "Cancelled"];
 const PAYMENT_METHODS = ["Cash", "Bank Transfer", "Mobile Wallet", "Other"];
+const MATCH_MINUTES = 15;
+const BREAK_MINUTES = 3;
 
 const staffRole = (role) => role === "admin" || role === "moderator";
 const dateLabel = (value) => value ? formatDate(`${value}T00:00:00`) : "—";
@@ -37,6 +39,18 @@ function tournamentIdFromHash() {
   const hash = window.location.hash.replace(/^#/, "");
   const pathId = hash.match(/^\/tournaments\/manage\/([^?]+)/)?.[1];
   return pathId ? decodeURIComponent(pathId) : new URLSearchParams(hash.split("?")[1] || "").get("id") || "";
+}
+
+const MANAGE_TABS = ["overview", "teams", "fixtures", "score", "finance"];
+
+function tournamentTabFromHash() {
+  const hash = window.location.hash.replace(/^#/, "");
+  const tab = new URLSearchParams(hash.split("?")[1] || "").get("tab") || "overview";
+  return MANAGE_TABS.includes(tab) ? tab : "overview";
+}
+
+function syncTabInHash(id, tab) {
+  history.replaceState(null, "", `#/tournaments/manage/${encodeURIComponent(id)}?tab=${tab}`);
 }
 
 function showModal(html) {
@@ -141,7 +155,7 @@ function tournamentCard(item, staff, canDelete) {
 
 export async function renderTournamentListPage(container, { role }) {
   const staff = staffRole(role);
-  const canDelete = role === "admin";
+  const canDelete = role === "admin" || role === "moderator";
   container.innerHTML = `<div class="page-header"><div><span class="eyebrow">Competition control</span><h1 class="page-title">Tournaments</h1><p class="page-subtitle">Teams, fixtures, and tournament collections in one place.</p></div>${staff ? `<button class="btn btn-primary" id="create-tournament" type="button">+ Create Tournament</button>` : ""}</div><div class="tournament-list" id="tournament-list"><p class="empty-state">Loading tournaments…</p></div>`;
   const list = container.querySelector("#tournament-list");
   async function refresh() {
@@ -207,7 +221,7 @@ function scoreSummary(fixture) {
 }
 
 function scoreView(state, staff) {
-  const rows = state.fixtures.map((fixture) => {
+  const rows = sortFixturesByTime(state.fixtures).map((fixture) => {
     const motm = fixture.manOfTheMatchId ? nameFor(fixture.manOfTheMatchId, state.players) : "-";
     const goals = (fixture.goals || []).map((goal) => `${nameFor(goal.scorerId, state.players)}${goal.assistId ? ` (Assist: ${nameFor(goal.assistId, state.players)})` : ""}`).join("; ") || "-";
     const cards = (fixture.cards || []).map((card) => `${card.type === "red" ? "Red" : "Yellow"}: ${nameFor(card.playerId, state.players)}`).join("; ") || "-";
@@ -216,8 +230,27 @@ function scoreView(state, staff) {
   return `<div class="section-toolbar"><div><h2>Match Scores</h2><p>Fixture results, player of the match, scorers, assists, cards, and notes.</p></div></div><div class="table-wrap"><table class="data-table score-table"><thead><tr><th>Fixture</th><th>Result</th><th>Man of the Match</th><th>Scorers & Assists</th><th>Cards</th><th>Notes</th>${staff ? "<th>Actions</th>" : ""}</tr></thead><tbody>${rows}</tbody></table></div>`;
 }
 
+function sortFixturesByTime(fixtures) {
+  return [...fixtures].sort((a, b) => `${a.date || ""}T${a.startTime || ""}`.localeCompare(`${b.date || ""}T${b.startTime || ""}`));
+}
+
+function createdAtMillis(fixture) {
+  const value = fixture.createdAt;
+  if (!value) return 0;
+  if (typeof value.toMillis === "function") return value.toMillis();
+  if (typeof value.seconds === "number") return value.seconds * 1000;
+  return 0;
+}
+
+function addMinutes(time, minutes) {
+  const [h, m] = String(time || "18:00").split(":").map((part) => parseInt(part, 10) || 0);
+  const total = h * 60 + m + minutes;
+  const wrapped = ((total % 1440) + 1440) % 1440;
+  return `${String(Math.floor(wrapped / 60)).padStart(2, "0")}:${String(wrapped % 60).padStart(2, "0")}`;
+}
+
 function fixturesView(state, staff, canDelete) {
-  return `<div class="section-toolbar"><div><h2>Fixture Management</h2><p>Schedule tournament teams, times, and venues.</p></div>${staff ? `<button class="btn btn-primary btn-small" id="add-fixture" type="button">+ Create Fixture</button>` : ""}</div><div class="table-wrap"><table class="data-table"><thead><tr><th>Fixture</th><th>Date & Time</th><th>Venue</th><th>Status</th>${staff ? "<th>Actions</th>" : ""}</tr></thead><tbody>${state.fixtures.map((fixture) => `<tr data-id="${escapeHtml(fixture.id)}"><td><strong>${escapeHtml(fixture.homeTeamName)}</strong> vs <strong>${escapeHtml(fixture.awayTeamName)}</strong></td><td>${dateLabel(fixture.date)}, ${escapeHtml(fixture.startTime)}</td><td>${escapeHtml(fixture.venueName)}</td><td><span class="badge badge-${statusClass(fixture.status)}">${escapeHtml(fixture.status)}</span></td>${staff ? `<td class="table-actions"><button class="btn btn-secondary btn-small" data-edit-fixture type="button">Edit</button>${canDelete ? `<button class="btn btn-danger btn-small" data-delete-fixture type="button">Delete</button>` : ""}</td>` : ""}</tr>`).join("") || `<tr><td colspan="${staff ? 5 : 4}" class="empty-state">No fixtures created.</td></tr>`}</tbody></table></div>`;
+  return `<div class="section-toolbar"><div><h2>Fixture Management</h2><p>Schedule tournament teams, times, and venues.</p></div>${staff ? `<div class="table-actions">${state.fixtures.length ? `<button class="btn btn-secondary btn-small" id="auto-schedule-fixtures" type="button">Auto-schedule times</button>` : ""}<button class="btn btn-primary btn-small" id="add-fixture" type="button">+ Create Fixture</button></div>` : ""}</div><div class="table-wrap"><table class="data-table"><thead><tr><th>Fixture</th><th>Date</th><th>Start Time</th><th>End Time</th><th>Venue</th><th>Status</th>${staff ? "<th>Actions</th>" : ""}</tr></thead><tbody>${sortFixturesByTime(state.fixtures).map((fixture) => `<tr data-id="${escapeHtml(fixture.id)}"><td><strong>${escapeHtml(fixture.homeTeamName)}</strong> vs <strong>${escapeHtml(fixture.awayTeamName)}</strong></td><td>${dateLabel(fixture.date)}</td><td>${escapeHtml(fixture.startTime || "—")}</td><td>${escapeHtml(fixture.startTime ? addMinutes(fixture.startTime, MATCH_MINUTES) : "—")}</td><td>${escapeHtml(fixture.venueName)}</td><td><span class="badge badge-${statusClass(fixture.status)}">${escapeHtml(fixture.status)}</span></td>${staff ? `<td class="table-actions"><button class="btn btn-secondary btn-small" data-edit-fixture type="button">Edit</button>${canDelete ? `<button class="btn btn-danger btn-small" data-delete-fixture type="button">Delete</button>` : ""}</td>` : ""}</tr>`).join("") || `<tr><td colspan="${staff ? 7 : 6}" class="empty-state">No fixtures created.</td></tr>`}</tbody></table></div>`;
 }
 
 function financeTotals(state) {
@@ -266,7 +299,7 @@ export async function renderTournamentManagePage(container, { role }) {
   const canDelete = role === "admin";
   if (!id) return navigate("/tournaments");
   let state;
-  let tab = "overview";
+  let tab = tournamentTabFromHash();
   container.innerHTML = `<p class="empty-state">Loading tournament workspace…</p>`;
 
   async function refresh() {
@@ -322,6 +355,23 @@ export async function renderTournamentManagePage(container, { role }) {
       try { if (fixture.id) await updateTournamentFixture(id, fixture.id, payload); else await addTournamentFixture(id, payload); closeModal(); await refresh(); }
       catch (error) { showError(overlay, "Unable to save the fixture."); console.error(error); }
     });
+  }
+
+  async function autoScheduleFixtures() {
+    const base = state.tournament.startTime || "18:00";
+    const date = state.tournament.date || "";
+    const ordered = [...state.fixtures].sort((a, b) => createdAtMillis(a) - createdAtMillis(b));
+    if (!window.confirm(`Reschedule all ${ordered.length} fixtures back-to-back from ${base}? Each match is ${MATCH_MINUTES} min with a ${BREAK_MINUTES} min break.`)) return;
+    try {
+      for (let index = 0; index < ordered.length; index += 1) {
+        const startTime = addMinutes(base, index * (MATCH_MINUTES + BREAK_MINUTES));
+        await updateTournamentFixture(id, ordered[index].id, { date, startTime });
+      }
+      await refresh();
+    } catch (error) {
+      window.alert("Unable to auto-schedule the fixtures.");
+      console.error(error);
+    }
   }
 
   function openCollection(item = {}) {
@@ -394,7 +444,7 @@ export async function renderTournamentManagePage(container, { role }) {
   }
 
   function wire() {
-    container.querySelectorAll("[data-tab]").forEach((button) => button.addEventListener("click", () => { tab = button.dataset.tab; render(); }));
+    container.querySelectorAll("[data-tab]").forEach((button) => button.addEventListener("click", () => { tab = button.dataset.tab; syncTabInHash(id, tab); render(); }));
     container.querySelector("#edit-tournament")?.addEventListener("click", () => openTournamentForm(state.tournament, refresh));
     container.querySelector("#delete-tournament")?.addEventListener("click", async () => {
       if (!window.confirm(`Delete ${state.tournament.name} and all of its teams, fixtures, collections, and bill payments?`)) return;
@@ -403,6 +453,7 @@ export async function renderTournamentManagePage(container, { role }) {
     });
     container.querySelector("#add-team")?.addEventListener("click", () => openTeam());
     container.querySelector("#add-fixture")?.addEventListener("click", () => openFixture());
+    container.querySelector("#auto-schedule-fixtures")?.addEventListener("click", autoScheduleFixtures);
     container.querySelector("#add-collection")?.addEventListener("click", () => openCollection());
     container.querySelector("#add-bill-payment")?.addEventListener("click", () => openBillPayment());
     container.querySelectorAll("[data-edit-team]").forEach((button) => button.addEventListener("click", () => openTeam(state.teams.find((item) => item.id === button.closest("[data-id]").dataset.id))));

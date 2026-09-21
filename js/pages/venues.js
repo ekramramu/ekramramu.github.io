@@ -52,7 +52,7 @@ function venueFormHtml(venue = {}) {
 
 export async function renderVenuesPage(container, { role }) {
   const canManage = role === "admin" || role === "moderator";
-  const canDelete = role === "admin";
+  const canDelete = role === "admin" || role === "moderator";
   container.innerHTML = `
     <div class="page-header">
       <h1 class="page-title"><span class="card-icon">▤</span> Venues</h1>

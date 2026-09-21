@@ -289,7 +289,7 @@ function collectionFormHtml(record, players) {
 
 export async function renderCollectionsPage(container, { role }) {
   const isAdmin = role === "admin" || role === "moderator";
-  const canDelete = role === "admin";
+  const canDelete = role === "admin" || role === "moderator";
   const colSpan = isAdmin ? 9 : 8;
 
   container.innerHTML = `
@@ -578,7 +578,7 @@ function billPaymentFormHtml(record) {
 
 export async function renderBillPaymentsPage(container, { role }) {
   const isAdmin = role === "admin" || role === "moderator";
-  const canDelete = role === "admin";
+  const canDelete = role === "admin" || role === "moderator";
   const colSpan = isAdmin ? 7 : 6;
 
   container.innerHTML = `

@@ -20,8 +20,8 @@ service cloud.firestore {
         && userRole() == 'admin';
     }
 
-    // Moderators can create/update day-to-day content but cannot delete records
-    // or manage user roles. Destructive content operations are admin-only.
+    // Moderators have full staff parity: create, update, and delete day-to-day
+    // content. Only user role management stays administrator-only.
     function isModerator() {
       return isVerified()
         && exists(/databases/$(database)/documents/users/$(request.auth.uid))
@@ -57,7 +57,7 @@ service cloud.firestore {
             && resource.data.email == request.auth.token.email
             && !request.resource.data.diff(resource.data).affectedKeys()
               .hasAny(['status', 'teamsId']));
-      allow delete: if isAdmin();
+      allow delete: if isStaff();
     }
 
     // Any verified member can view finance records. Staff can create/update;
@@ -67,83 +67,83 @@ service cloud.firestore {
     match /financeTransactions/{transactionId} {
       allow read: if isVerified();
       allow create, update: if isStaff();
-      allow delete: if isAdmin();
+      allow delete: if isStaff();
     }
 
     match /financeCollections/{collectionId} {
       allow read: if isVerified();
       allow create, update: if isStaff();
-      allow delete: if isAdmin();
+      allow delete: if isStaff();
     }
 
     match /financeBillPayments/{billPaymentId} {
       allow read: if isVerified();
       allow create, update: if isStaff();
-      allow delete: if isAdmin();
+      allow delete: if isStaff();
     }
 
-    // Match day schedule is staff-managed; only admins delete match days.
+    // Match day schedule is staff-managed; staff (admin or moderator) delete match days.
     match /matchDays/{matchId} {
       allow read: if isVerified();
       allow create, update: if isStaff();
-      allow delete: if isAdmin();
+      allow delete: if isStaff();
 
       // Each member can only read/write their own attendance response.
       match /rsvps/{rsvpId} {
         allow read: if isVerified();
         allow create, update: if isVerified() && request.auth.uid == rsvpId;
-        allow delete: if isAdmin() || (isVerified() && request.auth.uid == rsvpId);
+        allow delete: if isStaff() || (isVerified() && request.auth.uid == rsvpId);
       }
 
       match /teams/{teamId} {
         allow read: if isVerified();
         allow create, update: if isStaff();
-        allow delete: if isAdmin();
+        allow delete: if isStaff();
       }
 
       match /fixtures/{fixtureId} {
         allow read: if isVerified();
         allow create, update: if isStaff();
-        allow delete: if isAdmin();
+        allow delete: if isStaff();
       }
     }
 
-    // Venue directory is staff-managed; only admins delete venues.
+    // Venue directory is staff-managed; staff delete venues.
     match /venues/{venueId} {
       allow read: if isVerified();
       allow create, update: if isStaff();
-      allow delete: if isAdmin();
+      allow delete: if isStaff();
     }
 
     // Tournaments are visible to every verified member. Staff create/update;
-    // only administrators delete aggregate or child records.
+    // staff (admin or moderator) delete aggregate or child records.
     match /tournaments/{tournamentId} {
       allow read: if isVerified();
       allow create, update: if isStaff();
-      allow delete: if isAdmin();
+      allow delete: if isStaff();
 
       match /teams/{teamId} {
         allow read: if isVerified();
         allow create, update: if isStaff();
-        allow delete: if isAdmin();
+        allow delete: if isStaff();
       }
 
       match /fixtures/{fixtureId} {
         allow read: if isVerified();
         allow create, update: if isStaff();
-        allow delete: if isAdmin();
+        allow delete: if isStaff();
       }
 
       match /collections/{collectionId} {
         allow read: if isVerified();
         allow create, update: if isStaff();
-        allow delete: if isAdmin();
+        allow delete: if isStaff();
       }
 
       match /billPayments/{paymentId} {
         allow read: if isVerified();
         allow create, update: if isStaff();
-        allow delete: if isAdmin();
+        allow delete: if isStaff();
       }
     }
 
