@@ -44,7 +44,54 @@ export async function updatePlayer(playerId, player) {
 }
 
 export async function deletePlayer(playerId) {
+  await removePlayerReferences(playerId);
   return deleteDoc(doc(db, "players", playerId));
+}
+
+// Strips a player id from every tournament roster/team and match-day team so no
+// orphaned "Unknown player" references remain after the player doc is removed.
+export async function removePlayerReferences(playerId) {
+  const [tournaments, matchDays] = await Promise.all([
+    getDocs(collection(db, "tournaments")),
+    getDocs(collection(db, "matchDays"))
+  ]);
+
+  const tasks = [];
+
+  for (const tournamentDoc of tournaments.docs) {
+    const data = tournamentDoc.data();
+    if ((data.playerIds || []).includes(playerId)) {
+      tasks.push(updateDoc(tournamentDoc.ref, {
+        playerIds: (data.playerIds || []).filter((id) => id !== playerId),
+        updatedAt: serverTimestamp()
+      }));
+    }
+    const teams = await getDocs(collection(db, "tournaments", tournamentDoc.id, "teams"));
+    for (const teamDoc of teams.docs) {
+      const teamData = teamDoc.data();
+      if ((teamData.playerIds || []).includes(playerId)) {
+        tasks.push(updateDoc(teamDoc.ref, {
+          playerIds: (teamData.playerIds || []).filter((id) => id !== playerId),
+          updatedAt: serverTimestamp()
+        }));
+      }
+    }
+  }
+
+  for (const matchDoc of matchDays.docs) {
+    const teams = await getDocs(collection(db, "matchDays", matchDoc.id, "teams"));
+    for (const teamDoc of teams.docs) {
+      const teamData = teamDoc.data();
+      if ((teamData.playerIds || []).includes(playerId)) {
+        tasks.push(updateDoc(teamDoc.ref, {
+          playerIds: (teamData.playerIds || []).filter((id) => id !== playerId),
+          updatedAt: serverTimestamp()
+        }));
+      }
+    }
+  }
+
+  await Promise.all(tasks);
 }
 
 export async function listUserProfiles() {

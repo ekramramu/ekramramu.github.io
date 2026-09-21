@@ -209,7 +209,7 @@ function overview(state) {
 
 function teamsView(state, staff, canDelete) {
   const assignedIds = new Set(state.teams.flatMap((team) => team.playerIds || []));
-  const unassigned = (state.tournament.playerIds || []).filter((playerId) => !assignedIds.has(playerId));
+  const unassigned = (state.tournament.playerIds || []).filter((playerId) => !assignedIds.has(playerId) && state.players.some((player) => player.id === playerId));
   const playerHtml = (playerId) => `<li class="team-player" ${staff ? `draggable="true" data-player-id="${escapeHtml(playerId)}"` : ""}>${escapeHtml(nameFor(playerId, state.players))}</li>`;
   const teamCard = (team) => `<article class="managed-team-card" data-id="${escapeHtml(team.id)}"><div><span class="eyebrow">Team</span><h3>${escapeHtml(team.name)}</h3></div><ul class="team-drop-zone" data-team-id="${escapeHtml(team.id)}">${(team.playerIds || []).map(playerHtml).join("") || `<li class="drop-hint">Drop players here</li>`}</ul>${staff ? `<div class="table-actions"><button class="btn btn-secondary btn-small" data-edit-team type="button">Edit</button>${canDelete ? `<button class="btn btn-danger btn-small" data-delete-team type="button">Delete</button>` : ""}</div>` : ""}</article>`;
   return `<div class="section-toolbar"><div><h2>Team Management</h2><p>${staff ? "Drag players between teams to change their assignment." : "Tournament players are assigned to one team each."}</p></div>${staff ? `<button class="btn btn-primary btn-small" id="add-team" type="button">+ Create Team</button>` : ""}</div><section class="unassigned-players"><div><span class="eyebrow">Available roster</span><h2>Unassigned Players</h2></div><ul class="team-drop-zone" data-team-id="">${unassigned.map(playerHtml).join("") || `<li class="drop-hint">All tournament players are assigned</li>`}</ul></section><div class="managed-team-grid">${state.teams.map(teamCard).join("") || `<div class="tournament-empty"><h2>No teams created</h2><p>Build teams from the tournament player list.</p></div>`}</div>`;
@@ -306,6 +306,13 @@ export async function renderTournamentManagePage(container, { role }) {
     try {
       const [tournament, players, venues, teams, fixtures, collections, billPayments] = await Promise.all([getTournament(id), listPlayers(), listVenues(), listTournamentTeams(id), listTournamentFixtures(id), listTournamentCollections(id), listTournamentBillPayments(id)]);
       if (!tournament) throw new Error("Tournament not found");
+      if (staff) {
+        const validIds = (tournament.playerIds || []).filter((playerId) => players.some((player) => player.id === playerId));
+        if (validIds.length !== (tournament.playerIds || []).length) {
+          await updateTournament(id, { playerIds: validIds });
+          tournament.playerIds = validIds;
+        }
+      }
       state = { tournament, players, venues, teams, fixtures, collections, billPayments };
       render();
     } catch (error) {
