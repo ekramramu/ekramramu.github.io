@@ -249,7 +249,8 @@ function scoreView(state, staff) {
     const cards = (fixture.cards || []).map((card) => `${card.type === "red" ? "Red" : "Yellow"}: ${nameFor(card.playerId, state.players)}`).join("; ") || "-";
     return `<tr data-id="${escapeHtml(fixture.id)}"><td><strong>${escapeHtml(fixture.homeTeamName)}</strong> vs <strong>${escapeHtml(fixture.awayTeamName)}</strong></td><td class="score-cell">${escapeHtml(scoreSummary(fixture))}</td><td>${escapeHtml(motm)}</td><td>${escapeHtml(goals)}</td><td>${escapeHtml(cards)}</td><td>${escapeHtml(fixture.resultNotes || "-")}</td>${staff ? `<td><button class="btn btn-secondary btn-small" data-edit-result type="button">${fixture.homeScore == null ? "Add Result" : "Update Result"}</button></td>` : ""}</tr>`;
   }).join("") || `<tr><td colspan="${staff ? 7 : 6}" class="empty-state">Create fixtures before recording results.</td></tr>`;
-  return `<div class="section-toolbar"><div><h2>Match Scores</h2><p>Fixture results, player of the match, scorers, assists, cards, and notes.</p></div></div><div class="table-wrap"><table class="data-table score-table"><thead><tr><th>Fixture</th><th>Result</th><th>Man of the Match</th><th>Scorers & Assists</th><th>Cards</th><th>Notes</th>${staff ? "<th>Actions</th>" : ""}</tr></thead><tbody>${rows}</tbody></table></div>`;
+  const hasResults = state.fixtures.some((fixture) => fixture.homeScore != null && fixture.awayScore != null);
+  return `<div class="section-toolbar"><div><h2>Match Scores</h2><p>Fixture results, player of the match, scorers, assists, cards, and notes.</p></div>${staff && hasResults ? `<button class="btn btn-danger btn-small" id="reset-results" type="button">Reset all results</button>` : ""}</div><div class="table-wrap"><table class="data-table score-table"><thead><tr><th>Fixture</th><th>Result</th><th>Man of the Match</th><th>Scorers & Assists</th><th>Cards</th><th>Notes</th>${staff ? "<th>Actions</th>" : ""}</tr></thead><tbody>${rows}</tbody></table></div>`;
 }
 
 function sortFixturesByTime(fixtures) {
@@ -386,6 +387,19 @@ export async function renderTournamentManagePage(container, { role }) {
     });
   }
 
+  async function resetAllResults() {
+    const completed = state.fixtures.filter((fixture) => fixture.homeScore != null && fixture.awayScore != null);
+    if (!completed.length) return;
+    if (!window.confirm(`Clear results for all ${completed.length} completed match(es) and set them back to Scheduled? This cannot be undone.`)) return;
+    try {
+      await Promise.all(completed.map((fixture) => updateTournamentFixture(id, fixture.id, { homeScore: null, awayScore: null, manOfTheMatchId: "", resultNotes: "", goals: [], cards: [], status: "Scheduled" })));
+      await refresh();
+    } catch (error) {
+      window.alert("Unable to reset the results.");
+      console.error(error);
+    }
+  }
+
   async function autoScheduleFixtures() {
     const base = state.tournament.startTime || "18:00";
     const date = state.tournament.date || "";
@@ -483,6 +497,7 @@ export async function renderTournamentManagePage(container, { role }) {
     container.querySelector("#add-team")?.addEventListener("click", () => openTeam());
     container.querySelector("#add-fixture")?.addEventListener("click", () => openFixture());
     container.querySelector("#auto-schedule-fixtures")?.addEventListener("click", autoScheduleFixtures);
+    container.querySelector("#reset-results")?.addEventListener("click", resetAllResults);
     container.querySelector("#add-collection")?.addEventListener("click", () => openCollection());
     container.querySelector("#add-bill-payment")?.addEventListener("click", () => openBillPayment());
     container.querySelectorAll("[data-edit-team]").forEach((button) => button.addEventListener("click", () => openTeam(state.teams.find((item) => item.id === button.closest("[data-id]").dataset.id))));
