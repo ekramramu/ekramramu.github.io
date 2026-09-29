@@ -6,7 +6,7 @@ const MAX_LENGTH = 1000;
 const CATEGORIES = [
   { value: "played-well", label: "Players Who Played Well", hint: "Give a shout-out to players who played well this time." },
   { value: "improve", label: "Who Should Improve", hint: "Suggest who could step it up next time." },
-  { value: "other", label: "Anything Else", hint: "Any other feedback for the club." }
+  { value: "other", label: "Anything Else", hint: "Anything on your mind, even about the committee." }
 ];
 
 function categoryMeta(value) {
@@ -37,11 +37,11 @@ function feedbackItemHtml(item, canModerate) {
   `;
 }
 
-function categoryOptionsHtml() {
-  return CATEGORIES.map((category, index) => `
-    <label class="selection-option feedback-category-option">
-      <input type="radio" name="category" value="${escapeHtml(category.value)}" ${index === 0 ? "checked" : ""} />
-      <span><strong>${escapeHtml(category.label)}</strong><small>${escapeHtml(category.hint)}</small></span>
+function categoryFieldsHtml() {
+  return CATEGORIES.map((category) => `
+    <label class="form-field">
+      <span>${escapeHtml(category.label)}</span>
+      <textarea name="${escapeHtml(category.value)}" rows="3" maxlength="${MAX_LENGTH}" placeholder="${escapeHtml(category.hint)}"></textarea>
     </label>
   `).join("");
 }
@@ -97,14 +97,7 @@ export function renderFeedbackPage(appRoot, { isSignedIn = false, canModerate = 
             <form id="feedback-form" class="auth-form" novalidate>
               <p class="auth-error" id="feedback-error" role="alert" hidden></p>
               <p class="auth-error" id="feedback-success" role="status" hidden></p>
-              <fieldset class="selection-fieldset">
-                <legend>Choose a section</legend>
-                <div class="feedback-category-options">${categoryOptionsHtml()}</div>
-              </fieldset>
-              <label class="form-field">
-                <span>Your feedback</span>
-                <textarea name="message" rows="6" maxlength="${MAX_LENGTH}" placeholder="What's on your mind?" autofocus required></textarea>
-              </label>
+              ${categoryFieldsHtml()}
               <button class="btn btn-primary btn-block" type="submit">Post anonymously</button>
             </form>
           </div>
@@ -194,17 +187,18 @@ export function renderFeedbackPage(appRoot, { isSignedIn = false, canModerate = 
     errorEl.hidden = true;
     successEl.hidden = true;
     const formData = new FormData(form);
-    const message = String(formData.get("message") || "").trim();
-    const category = String(formData.get("category") || CATEGORIES[0].value);
-    if (!message) {
-      errorEl.textContent = "Please enter your feedback before posting.";
+    const entries = CATEGORIES
+      .map((category) => ({ category: category.value, message: String(formData.get(category.value) || "").trim() }))
+      .filter((entry) => entry.message);
+    if (!entries.length) {
+      errorEl.textContent = "Please write something in at least one box before posting.";
       errorEl.hidden = false;
       return;
     }
     const submitButton = form.querySelector("button[type=submit]");
     submitButton.disabled = true;
     try {
-      await addFeedback(message.slice(0, MAX_LENGTH), category);
+      await Promise.all(entries.map((entry) => addFeedback(entry.message.slice(0, MAX_LENGTH), entry.category)));
       form.reset();
       successEl.textContent = "Thanks! Your feedback was posted anonymously.";
       successEl.hidden = false;
