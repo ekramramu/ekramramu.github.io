@@ -31,8 +31,15 @@ const NAV_ITEMS = [
     ]
   },
   { path: "/rules", label: "Rule", icon: "assets/rule.png" },
+  { path: "/feedback", label: "Feedback", emoji: "💬" },
   { path: "/settings", label: "Settings", icon: "assets/settings.png" }
 ];
+
+function navIconHtml(item) {
+  return item.icon
+    ? `<img class="app-nav-icon" src="${item.icon}" alt="" aria-hidden="true" />`
+    : `<span class="app-nav-icon app-nav-icon-emoji" aria-hidden="true">${item.emoji || ""}</span>`;
+}
 
 export function renderShell(appRoot, { activePath, profile, email }) {
   const navHtml = NAV_ITEMS.map((item) => {
@@ -46,7 +53,7 @@ export function renderShell(appRoot, { activePath, profile, email }) {
       return `
         <div class="app-nav-group${groupActive ? " open" : ""}">
           <button class="app-nav-link app-nav-toggle${groupActive ? " active" : ""}" type="button">
-            <img class="app-nav-icon" src="${item.icon}" alt="" aria-hidden="true" />
+            ${navIconHtml(item)}
             <span>${item.label}</span>
             <span class="app-nav-caret" aria-hidden="true">⌄</span>
           </button>
@@ -57,7 +64,7 @@ export function renderShell(appRoot, { activePath, profile, email }) {
     const itemActive = (item.activePaths || [item.path]).includes(activePath);
     return `
       <a class="app-nav-link${itemActive ? " active" : ""}" href="#${item.path}">
-        <img class="app-nav-icon" src="${item.icon}" alt="" aria-hidden="true" />
+        ${navIconHtml(item)}
         <span>${item.label}</span>
       </a>
     `;

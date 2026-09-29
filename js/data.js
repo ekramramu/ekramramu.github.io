@@ -447,6 +447,35 @@ export async function deleteTournamentBillPayment(tournamentId, paymentId) {
   return deleteDoc(doc(db, "tournaments", tournamentId, "billPayments", paymentId));
 }
 
+// Public anonymous feedback board: no author is ever stored, just the message + category.
+export async function listFeedback() {
+  const snapshot = await getDocs(query(collection(db, "feedback"), orderBy("createdAt", "desc")));
+  return snapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
+}
+
+export async function addFeedback(message, category) {
+  return addDoc(collection(db, "feedback"), {
+    message,
+    category,
+    createdAt: serverTimestamp()
+  });
+}
+
+export async function deleteFeedback(feedbackId) {
+  return deleteDoc(doc(db, "feedback", feedbackId));
+}
+
+// Staff-controlled toggle: hides the feedback list from ordinary members/visitors
+// until an admin/moderator switches it on. Defaults to hidden when unset.
+export async function getFeedbackBoardVisibility() {
+  const snapshot = await getDoc(doc(db, "settings", "feedbackBoard"));
+  return snapshot.exists() ? !!snapshot.data().visible : false;
+}
+
+export async function setFeedbackBoardVisibility(visible) {
+  return setDoc(doc(db, "settings", "feedbackBoard"), { visible }, { merge: true });
+}
+
 export function summarizeTransactions(transactions) {
   let collections = 0;
   let expenses = 0;

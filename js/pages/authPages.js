@@ -36,6 +36,7 @@ export function renderLogin(appRoot) {
         <p class="auth-forgot"><a href="#/forgot-password">Forgot password?</a></p>
         <button class="btn btn-primary btn-block" type="submit">Sign in</button>
       </form>
+      <p class="auth-switch"><a href="#/feedback">Have feedback? Share it anonymously</a></p>
     `
   );
 

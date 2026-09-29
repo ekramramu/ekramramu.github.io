@@ -2,6 +2,7 @@ import { watchAuthState, getUserProfile, ensureUserProfile, logoutAccount, updat
 import { listPlayers } from "./data.js";
 import { renderShell } from "./layout.js";
 import { renderLogin, renderVerifyNotice, renderForgotPassword } from "./pages/authPages.js";
+import { renderFeedbackPage } from "./pages/feedback.js";
 import { needsProfileCompletion, renderCompleteProfilePage } from "./pages/completeProfile.js";
 import { renderDashboardPage } from "./pages/dashboard.js";
 import { renderRulesPage } from "./pages/rules.js";
@@ -27,6 +28,12 @@ function renderCurrentView() {
   const path = getCurrentPath();
 
   if (authState.status === "loading") {
+    return;
+  }
+
+  if (path === "/feedback") {
+    const role = currentProfile?.role === "admin" || currentProfile?.role === "moderator" ? currentProfile.role : null;
+    renderFeedbackPage(appRoot, { isSignedIn: authState.status === "signed-in", canModerate: !!role });
     return;
   }
 
@@ -128,7 +135,7 @@ function renderCurrentView() {
   }
 }
 
-[...PROTECTED_PATHS, "/login", "/forgot-password"].forEach((path) => registerRoute(path, renderCurrentView));
+[...PROTECTED_PATHS, "/login", "/forgot-password", "/feedback"].forEach((path) => registerRoute(path, renderCurrentView));
 setNotFoundHandler(renderCurrentView);
 
 watchAuthState(async (user) => {

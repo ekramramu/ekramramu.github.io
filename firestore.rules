@@ -147,6 +147,26 @@ service cloud.firestore {
       }
     }
 
+    // Public anonymous feedback board: no login required to post or read.
+    // Only the message text + category + server timestamp are ever stored (no author fields).
+    match /feedback/{feedbackId} {
+      allow read: if true;
+      allow create: if request.resource.data.keys().hasOnly(['message', 'category', 'createdAt'])
+        && request.resource.data.message is string
+        && request.resource.data.message.size() > 0
+        && request.resource.data.message.size() <= 1000
+        && request.resource.data.category in ['played-well', 'improve', 'other'];
+      allow update: if false;
+      allow delete: if isStaff();
+    }
+
+    // Staff-only toggle controlling whether the feedback list is shown to
+    // ordinary members; readable by everyone so the client can check it.
+    match /settings/{settingId} {
+      allow read: if true;
+      allow write: if isStaff();
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }
